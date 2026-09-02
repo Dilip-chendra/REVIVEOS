@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import {
   listAgents, submitAgentProposal,
-  simulateAgentCollisionLive, simulateAgentBypassLive
+  simulateAgentCollisionLive, simulateAgentBypassLive, API_BASE_URL
 } from "../api/client";
 import LiveRazorpayLinkModal from "../components/LiveRazorpayLinkModal";
 
@@ -121,7 +121,7 @@ export default function DeveloperHub() {
 from reviveos_sdk import ReviveOSAgentClient
 
 client = ReviveOSAgentClient(
-    base_url="http://127.0.0.1:8000",
+    base_url="${API_BASE_URL || 'http://localhost:8000'}",
     agent_id="sub_agent_merch0",
     hmac_secret="revive_sec_9912a7d4...",
     tenant_id="MERCH-001"
@@ -153,7 +153,7 @@ import axios from 'axios';
 
 const AGENT_ID = 'cart_agent_merch0';
 const HMAC_SECRET = 'revive_sec_cart_2026';
-const BASE_URL = 'http://127.0.0.1:8000';
+const BASE_URL = '${API_BASE_URL || 'http://localhost:8000'}';
 
 async function submitRecoveryProposal() {
   const payload = {
@@ -213,7 +213,7 @@ async function submitRecoveryProposal() {
 }`,
 
     curl: `# 1. Submit an authenticated recovery proposal via cURL
-curl -X POST http://127.0.0.1:8000/api/agents/proposals \\
+curl -X POST ${API_BASE_URL || 'http://localhost:8000'}/api/agents/proposals \\
   -H "Content-Type: application/json" \\
   -H "X-ReviveOS-Agent-ID: sub_agent_merch0" \\
   -H "X-ReviveOS-API-Key: ${apiKey}" \\

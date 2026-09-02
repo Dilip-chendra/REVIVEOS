@@ -4,9 +4,39 @@
  */
 import axios from 'axios';
 
+// ── API Base URL Configuration ──────────────────────────────────────────────
+// VITE_API_URL is set to:
+//   Local Dev:  http://localhost:8000  (via .env.development; Vite proxy also handles /api)
+//   Production: https://reviveai-e858.onrender.com  (via .env.production / Vercel env var)
+//
+// In production builds we strip any trailing slash for safety.
+// If VITE_API_URL is missing on a production build, we throw immediately so
+// the issue is discovered at startup rather than silently failing at runtime.
+const _rawApiUrl = import.meta.env.VITE_API_URL as string | undefined;
+
+let _apiBaseUrl: string;
+if (_rawApiUrl) {
+  // Strip trailing slash so we never produce double-slash URLs like .../api//opportunities
+  _apiBaseUrl = _rawApiUrl.replace(/\/+$/, '');
+} else if (import.meta.env.DEV) {
+  // Local dev without .env.development — fall back to empty string so Vite proxy handles /api/*
+  _apiBaseUrl = '';
+} else {
+  // Production build with no VITE_API_URL — fail loudly
+  throw new Error(
+    '[ReviveOS] VITE_API_URL is not set. Set it to https://reviveai-e858.onrender.com ' +
+    'in Vercel dashboard under Project → Settings → Environment Variables.'
+  );
+}
+
+export const API_BASE_URL = _apiBaseUrl;
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: `${API_BASE_URL}/api`,
   timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 api.interceptors.request.use(async (config) => {

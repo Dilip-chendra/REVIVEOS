@@ -16,12 +16,20 @@ htmlcov/
 .mypy_cache/
 
 # ── Environment & Secrets ─────────────────────────────────────────────────────
-# CRITICAL: These files contain secrets and must NEVER be committed
+# CRITICAL: .env and .env.local contain secrets — NEVER commit them
 .env
 .env.local
 .env.*.local
 *.pem
 *.key
+# Allow safe public env files (they contain only public URLs, no secrets)
+!.env.production
+!.env.development
+!.env.example
+!frontend/.env.production
+!frontend/.env.development
+!frontend/.env.example
+!backend/.env.example
 
 # ── Database ──────────────────────────────────────────────────────────────────
 *.db

@@ -63,12 +63,32 @@ app = FastAPI(
 )
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
+# Always allow production frontend + standard local dev origins.
+# FRONTEND_URL env var controls the production origin (set in Render dashboard).
+_cors_origins: list[str] = [
+    settings.frontend_url,                  # e.g. https://reviveai-five.vercel.app
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+]
+# Deduplicate while preserving order
+_seen = set()
+_allowed_origins = []
+for _o in _cors_origins:
+    if _o and _o not in _seen:
+        _seen.add(_o)
+        _allowed_origins.append(_o)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "http://127.0.0.1:3000"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID", "X-Response-Time-Ms"],
 )
 
 

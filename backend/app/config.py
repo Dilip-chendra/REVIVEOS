@@ -29,6 +29,10 @@ class Settings(BaseSettings):
         "Detect revenue at risk. Diagnose why. Recover it safely."
     )
 
+    # ── CORS / Frontend ───────────────────────────────────────────────────────
+    # In Render, set: FRONTEND_URL=https://reviveai-five.vercel.app
+    frontend_url: str = "http://localhost:5173"
+
     # ── Database ─────────────────────────────────────────────────────────────
     database_url: str = "sqlite+aiosqlite:///./reviveai.db"
 
