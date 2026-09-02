@@ -1,0 +1,56 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# ── Environment & Secrets ─────────────────────────────────────────────────────
+# CRITICAL: These files contain secrets and must NEVER be committed
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ── Database ──────────────────────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+reviveai.db
+
+# ── Data files ────────────────────────────────────────────────────────────────
+backend/data/*.parquet
+backend/data/*.csv
+backend/data/*.json
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+node_modules/
+dist/
+.next/
+frontend/dist/
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+docker-compose.override.yml

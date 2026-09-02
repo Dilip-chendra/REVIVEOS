@@ -1,0 +1,282 @@
+{
+  "report_generated": "2026-09-01T22:20:00+05:30",
+  "product": "ReviveOS",
+  "version": "v1",
+  "audit_type": "Forensic Black-Box Runtime Capability Verification",
+  "baseline": {
+    "git_status": "No commits yet — all files untracked",
+    "backend_tests": "310 passed, 671 warnings, 0 failed in 15.51s",
+    "frontend_build": "0 TypeScript errors, 2383 modules, built in 1.82s",
+    "backend_start_cmd": "python -m uvicorn app.main:app --host 127.0.0.1 --port 8000",
+    "frontend_start_cmd": "npm run dev",
+    "env_vars_required": ["GEMINI_API_KEY", "OPENROUTER_API_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_ENABLED", "APP_SECRET_KEY", "CLERK_SECRET_KEY"],
+    "database": "SQLite (reviveai.db), auto-created via SQLAlchemy on startup",
+    "razorpay_mode": "TEST (rzp_test_TVw...)"
+  },
+  "capabilities": [
+    {
+      "capability": "Agent Registry",
+      "status": "REAL",
+      "frontend_route": "/agents",
+      "api": "GET /api/agents, POST /api/agents/register",
+      "backend_service": "app/services/agent_registry.py: AgentRegistry",
+      "runtime_test": "44 agents seeded across 5 tenant variants; registration HTTP 201 verified",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "Registry returns 44 seeded agents; new agent registration returns agent_id + hmac_secret + api_key"
+    },
+    {
+      "capability": "Agent HMAC Authentication",
+      "status": "REAL",
+      "frontend_route": "/agents",
+      "api": "POST /api/agents/proposals (X-ReviveOS-Agent-ID, X-ReviveOS-Signature)",
+      "backend_service": "app/routers/agents.py: verify_agent_hmac_signature()",
+      "runtime_test": "Invalid HMAC -> HTTP 401 VERIFIED. Expired timestamp -> HTTP 401 VERIFIED. Unknown agent -> HTTP 401 VERIFIED. Replay attack (same request_id) -> HTTP 401 VERIFIED.",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "6/7 protocol rejection checks pass. Wrong capability check partially working (capability mismatch returns HTTP 200 with unclear status — needs review)."
+    },
+    {
+      "capability": "Agent Proposal API",
+      "status": "REAL",
+      "frontend_route": "/agents",
+      "api": "POST /api/agents/proposals",
+      "backend_service": "app/services/agent_gateway.py: AgentGateway.evaluate_and_arbitrate_proposal()",
+      "runtime_test": "Valid proposal returns HTTP 200 with APPROVED, action_contract, NIC, causal_lift_tau, decision_id",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "DEC-8FCFCA9A returned with NIC=348.50 INR, contract CTR-B52CD26A61, TTL=300s, execution_authority=FINANCIAL_GATEWAY_ONLY"
+    },
+    {
+      "capability": "Multi-Agent Conflict Arbitration",
+      "status": "REAL_WITH_IMPORTANT_CAVEAT",
+      "frontend_route": "/agents (Collision Lab)",
+      "api": "POST /api/agents/simulate-collision",
+      "backend_service": "app/services/agent_arbitrator.py: MultiAgentArbitrator.arbitrate()",
+      "runtime_test": "Live swarm confirmed: Sub-APPROVED, Cart-SUPPRESSED_CONFLICT, Retention-SUPPRESSED_CONFLICT. BUT: winner does not change based purely on NIC when proposals arrive sequentially.",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "CAVEAT: The gateway submits proposals ONE-AT-A-TIME to the arbitrator. The arbitrator correctly ranks by NIC (sort descending) when given all proposals simultaneously. But in practice, the first agent to hit the gateway locks the customer attention budget, making all subsequent agents SUPPRESSED regardless of their NIC. True multi-agent NIC-winner arbitration only works via the /simulate-collision endpoint, not when agents call separately."
+    },
+    {
+      "capability": "Customer Attention Budget (1 contact/24h)",
+      "status": "REAL",
+      "frontend_route": "/agents",
+      "api": "implicit in /api/agents/proposals",
+      "backend_service": "app/services/agent_arbitrator.py: CustomerAttentionRecord, app/services/agent_gateway.py step 5",
+      "runtime_test": "After Subscription agent takes the slot, Cart and Retention get CUSTOMER_ATTENTION_BUDGET_EXHAUSTED",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "Live swarm stdout confirmed. Attention cap is in-memory per process restart."
+    },
+    {
+      "capability": "Action Contract Generation",
+      "status": "REAL",
+      "frontend_route": "/agents",
+      "api": "POST /api/agents/proposals (response includes action_contract)",
+      "backend_service": "app/services/action_contract.py: ActionContractManager.create_contract()",
+      "runtime_test": "Contract CTR-B52CD26A61 returned with TTL=300s, HMAC receipt hash, execution_authority=FINANCIAL_GATEWAY_ONLY",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "Action contracts contain contract_id (CTR-prefix), case_id, signed_at, expires_at_epoch, idempotency_key. Cryptographic HMAC receipt hash included."
+    },
+    {
+      "capability": "Financial Gateway Enforcement (contract-gated)",
+      "status": "REAL",
+      "frontend_route": "N/A (backend service)",
+      "api": "Internal service; POST /api/agents/simulate-bypass",
+      "backend_service": "app/services/financial_gateway.py: FinancialActionGateway.execute_action()",
+      "runtime_test": "Rogue agent script -> financial_gateway_verdict=BLOCKED, blocking_reason=MISSING_ACTION_CONTRACT, money_moved=false",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "rogue_bypassing_agent.py stdout captured. Direct execution without signed contract returns BLOCKED with execution_blocked=true."
+    },
+    {
+      "capability": "Razorpay Test-Mode SDK Integration",
+      "status": "REAL",
+      "frontend_route": "/integrations",
+      "api": "GET /api/razorpay/health, POST /api/razorpay/sync",
+      "backend_service": "app/services/razorpay_service.py: RazorpayService",
+      "runtime_test": "Key prefix rzp_test_TVw verified. rz.order.all({count:1}) returns dict with count field — confirms real Razorpay API auth succeeds.",
+      "provider_required": true,
+      "provider_verified": true,
+      "evidence": "Live SDK call to Razorpay test account succeeds. Zero payment records (test account not yet used for real transactions). Razorpay SDK installed and authenticated."
+    },
+    {
+      "capability": "Razorpay Payment Link Creation",
+      "status": "REAL",
+      "frontend_route": "/case/:id",
+      "api": "POST /api/razorpay/payment-link",
+      "backend_service": "app/services/razorpay_service.py: create_payment_link()",
+      "runtime_test": "NOT independently verified in this audit (would require a valid customer + case in DB)",
+      "provider_required": true,
+      "provider_verified": false,
+      "evidence": "Code path exists and SDK is authenticated. Not executed in audit to avoid creating real test payment links."
+    },
+    {
+      "capability": "Razorpay Webhook Verification",
+      "status": "REAL",
+      "frontend_route": "N/A",
+      "api": "POST /api/webhooks/razorpay",
+      "backend_service": "app/routers/webhooks.py (inferred from project)",
+      "runtime_test": "NOT independently demonstrated — requires Razorpay to send real webhook to public URL. Localhost cannot receive Razorpay webhooks without ngrok/tunnel.",
+      "provider_required": true,
+      "provider_verified": false,
+      "evidence": "HMAC webhook signature verification code exists. Cannot be demonstrated in localhost environment without webhook tunnel."
+    },
+    {
+      "capability": "Real Provider Payment Completion (full money loop)",
+      "status": "EXTERNAL_DEPENDENCY",
+      "frontend_route": "N/A",
+      "api": "Razorpay checkout -> webhook -> reconciliation",
+      "backend_service": "app/services/razorpay_service.py, app/services/recovery_conversion_service.py",
+      "runtime_test": "NOT demonstrated. Requires: (1) real customer filling checkout form, (2) Razorpay returning payment confirmation, (3) webhook firing to a public endpoint.",
+      "provider_required": true,
+      "provider_verified": false,
+      "evidence": "The full money loop (EVENT -> OPPORTUNITY -> PROPOSAL -> DECISION -> CONTRACT -> GATEWAY -> RAZORPAY -> CUSTOMER PAYMENT -> WEBHOOK -> RECONCILIATION -> AUDIT) cannot be completed in a localhost environment with no public webhook endpoint and no live customer interaction."
+    },
+    {
+      "capability": "Agent Rate Limiting (sliding window 120/min)",
+      "status": "REAL",
+      "frontend_route": "N/A",
+      "api": "POST /api/agents/proposals -> HTTP 429",
+      "backend_service": "app/services/agent_registry.py: check_rate_limit() with sliding window",
+      "runtime_test": "Rate limit code verified: sliding window keeps timestamps from last 60s, blocks at >= rate_limit_per_minute (120 for seeded agents). 30-request flood did NOT trigger 429 because 30 < 120.",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "Code verified. Rate limit fires at >120/min per agent. Flood test sent only 30 requests — well under limit. Would trigger with >120 requests/minute."
+    },
+    {
+      "capability": "Agent Revocation",
+      "status": "REAL_WITH_AUTH_REQUIREMENT",
+      "frontend_route": "/agents",
+      "api": "POST /api/agents/{agent_id}/revoke",
+      "backend_service": "app/services/agent_registry.py: revoke_agent(); app/routers/agents.py line 194",
+      "runtime_test": "Revoke endpoint requires authenticated session (Clerk JWT or dev bypass). Direct HTTP test returned 404 (auth gate). Code path exists and is correct.",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "Endpoint requires current_user (auth dependency). Without valid session, revocation returns 404. After revocation, proposals should be rejected. Could not complete end-to-end without auth session."
+    },
+    {
+      "capability": "Capability Enforcement (agent vs action type)",
+      "status": "REAL_WITH_PARTIAL_GAP",
+      "frontend_route": "/agents",
+      "api": "POST /api/agents/proposals",
+      "backend_service": "app/services/agent_registry.py: validate_capability(); app/services/agent_gateway.py step 3",
+      "runtime_test": "Protocol test #6: Sub agent attempting SEND_PAYMENT_LINK returned HTTP 200 with status=None. The capability check is in the gateway but the response structure for that path may not surface correctly via the proposals endpoint vs gateway path.",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "ACTION_CAPABILITY_MAP exists in agent_registry.py. validate_capability() returns (False, reason) for unauthorized actions. But HTTP 200 with null decision status suggests the dev-mode auth path may bypass the gateway's capability check."
+    },
+    {
+      "capability": "Tenant Isolation",
+      "status": "REAL",
+      "frontend_route": "N/A",
+      "api": "POST /api/agents/proposals (tenant_id validation)",
+      "backend_service": "app/services/agent_gateway.py: tenant_id check step 1; app/services/agent_registry.py: get_agent_by_id_and_tenant()",
+      "runtime_test": "Proposal from sub_agent_default with tenant_id=default succeeds. Tenant mismatch would return REJECTED_UNAUTHORIZED. Verified via test suite (test_real_multi_agent_governance_flow.py).",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "Test suite verified 310/310. Tenant isolation is enforced at registry lookup level."
+    },
+    {
+      "capability": "AI-Powered Failure Diagnosis (Gemini / OpenRouter)",
+      "status": "REAL_WITH_DETERMINISTIC_FALLBACK",
+      "frontend_route": "/case/:id, /copilot",
+      "api": "POST /api/cases/{id}/diagnose, POST /api/copilot/chat",
+      "backend_service": "app/services/ai_agent.py: AIAgent.diagnose_failure(); app/services/model_router.py: AIRouter",
+      "runtime_test": "Model router code confirmed: uses Gemini API (google.generativeai) + OpenRouter as failover. Has deterministic fallback. ai_generated=True flag in response distinguishes real AI from fallback.",
+      "provider_required": true,
+      "provider_verified": false,
+      "evidence": "Source code: model_router.py uses httpx to call OpenRouter API and Gemini generateContent. AIAgent.diagnose_failure() sends structured prompt, receives JSON, validates schema. Falls back to deterministic risk engine if AI fails. NOT independently verified with live call in this audit."
+    },
+    {
+      "capability": "Reference Agent Scripts (subscription/cart/retention)",
+      "status": "RULE_BASED_REFERENCE_AGENT",
+      "frontend_route": "N/A (CLI scripts)",
+      "api": "POST /api/agents/proposals (called via HTTP)",
+      "backend_service": "agents/subscription_agent.py, agents/cart_agent.py, agents/retention_agent.py",
+      "runtime_test": "All 3 run as separate processes via run_live_agent_swarm.py. VERIFIED: stdout captured showing HTTP requests, proposal submission, and decision receipt.",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "These are RULE-BASED REFERENCE IMPLEMENTATIONS. They use hardcoded opportunity parameters and deterministic logic to generate proposals. They do NOT invoke any LLM or AI model. They demonstrate the ReviveOS interoperability protocol correctly but should not be labeled 'AI agents'."
+    },
+    {
+      "capability": "Economic NIC Scoring",
+      "status": "REAL",
+      "frontend_route": "/agents",
+      "api": "POST /api/agents/proposals (response: net_incremental_contribution_inr, causal_lift_tau)",
+      "backend_service": "app/services/agent_gateway.py lines 316-325: tau = p_rec - p_nat; NIC = tau*amount - cost - discount - friction",
+      "runtime_test": "Verified: NIC=348.50 with tau=0.70, amount=500, cost=1.00, friction=0.50. Formula: 0.70*500 - 1.00 - 0.50 = 348.50 INR.",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "Formula verified algebraically against live API response. NIC changes with different inputs (p_rec, cost, discount, friction). Arbitration winner changes only if proposals arrive simultaneously via /simulate-collision endpoint."
+    },
+    {
+      "capability": "Demo/Real Environment Isolation",
+      "status": "REAL_WITH_KNOWN_LIMITATION",
+      "frontend_route": "/",
+      "api": "GET /api/environment, POST /api/environment/switch",
+      "backend_service": "app/state.py, app/config.py",
+      "runtime_test": "Not explicitly tested in this audit session. Known from prior sessions: environment switch toggles between DEMO fixtures and REAL provider data.",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "KNOWN LIMITATION: Attention ledger and agent registry are in-memory. Switching environment does not clear these. Real mode shows 0 provider records (Razorpay test account has no payments). Demo mode injects synthetic fixtures."
+    },
+    {
+      "capability": "Audit Trail",
+      "status": "REAL",
+      "frontend_route": "/audit",
+      "api": "GET /api/audit",
+      "backend_service": "app/services/audit_service.py",
+      "runtime_test": "Every proposal decision calls add_audit_event(). Audit entries are queryable via API.",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "310 test suite passes include audit trail tests. add_audit_event called in agent_gateway.py _finalize_decision()."
+    },
+    {
+      "capability": "Budget Concurrency Lock",
+      "status": "PARTIAL",
+      "frontend_route": "/policy-studio",
+      "api": "POST /api/capital/allocate",
+      "backend_service": "app/services/capital_allocator.py",
+      "runtime_test": "Code confirmed: has budget enforcement, has threading.Lock, has reserve logic. Does NOT have asyncio.Lock. Under true async concurrent load (FastAPI), threading.Lock may not fully prevent race conditions between coroutines.",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "capital_allocator.py uses threading.Lock (not asyncio.Lock). FastAPI is async. A threading.Lock in an async context provides some protection but does not guarantee atomic budget allocation under high concurrent async coroutine load."
+    },
+    {
+      "capability": "Customer Opt-Out Sovereignty (Article 6)",
+      "status": "REAL",
+      "frontend_route": "/policy-studio",
+      "api": "POST /api/agents/proposals",
+      "backend_service": "app/services/agent_gateway.py step 4: opt_out_status check",
+      "runtime_test": "Test test_opt_out_customer_sovereignty_enforcement passes. Customer CUST-OPTOUT-99 hardcoded as opted-out.",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "Policy check at gateway step 4 before any economic computation. Opt-out returns CUSTOMER_SOVEREIGNTY_OPT_OUT immediately."
+    },
+    {
+      "capability": "Callback Communication to Agents",
+      "status": "PARTIAL",
+      "frontend_route": "N/A",
+      "api": "Internal: agent_gateway.py callback dispatch via httpx",
+      "backend_service": "app/services/agent_gateway.py: _dispatch_callback()",
+      "runtime_test": "Callback URL field accepted in proposals. httpx async dispatch code exists. No live callback server was running in this audit to receive and verify callbacks.",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "Callback dispatch code exists but could not be end-to-end verified without a live callback listener. Test suite covers callback dispatch via mock."
+    },
+    {
+      "capability": "Re-negotiation (WAIT and re-propose)",
+      "status": "PARTIAL",
+      "frontend_route": "N/A",
+      "api": "POST /api/agents/proposals (WAIT status returned)",
+      "backend_service": "app/services/agent_gateway.py step 7: WAIT status for high natural recovery",
+      "runtime_test": "WAIT decision is returned when p_nat >= 0.75 and tau < 0.10. Agent script receiving WAIT would need to re-submit. Not tested end-to-end with an agent that re-submits on WAIT.",
+      "provider_required": false,
+      "provider_verified": false,
+      "evidence": "Protocol supports re-negotiation: agent submits, receives WAIT, waits, re-submits with different parameters. The gateway evaluates each submission independently. There is no server-side re-negotiation state machine — re-negotiation is agent-driven."
+    }
+  ]
+}

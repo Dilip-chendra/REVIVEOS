@@ -1,0 +1,23 @@
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad-front" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#6366f1" />
+    </linearGradient>
+    <linearGradient id="grad-back" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+    <linearGradient id="grad-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0.5" />
+    </linearGradient>
+    <filter id="blur-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" />
+    </filter>
+  </defs>
+  <path d="M20 6 L34 20 L20 34 L6 20 Z" fill="url(#grad-glow)" filter="url(#blur-glow)" />
+  <path d="M20 12 L34 26 L20 40 L6 26 Z" fill="url(#grad-back)" opacity="0.9" />
+  <path d="M20 0 L34 14 L20 28 L6 14 Z" fill="url(#grad-front)" opacity="0.95" />
+  <path d="M20 0 L34 14 L20 16 L6 14 Z" fill="white" opacity="0.15" />
+</svg>
