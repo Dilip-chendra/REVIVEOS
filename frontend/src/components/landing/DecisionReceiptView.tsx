@@ -42,7 +42,7 @@ export const DecisionReceiptView: React.FC = () => {
     },
     cryptographic_seal: {
       algorithm: "HMAC-SHA256",
-      key_id: "k_rzp_live_control_sec",
+      key_id: "k_ctrl_demo_sec_001",
       signature: "8f2a1c4e9b7d3f6a2e5c8b1d4f7a0e3b6c9d2e5f8a1b4c7d0e3f6a9b2c5d8e1",
     },
   };
