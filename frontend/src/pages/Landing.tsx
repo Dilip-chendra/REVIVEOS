@@ -59,11 +59,17 @@ const clerkAppearance = {
 export default function Landing({ onEnterDemo }: LandingProps) {
   const [view, setView] = useState<View>("landing");
 
-  const openAuth = () => {
+  const handleSignIn = () => {
+    setView("signin");
+  };
+
+  const handleSignUp = () => {
+    setView("signup");
+  };
+
+  const handleDemo = () => {
     if (onEnterDemo) {
       onEnterDemo();
-    } else {
-      setView("signin");
     }
   };
 
@@ -79,7 +85,11 @@ export default function Landing({ onEnterDemo }: LandingProps) {
       }}
     >
       {/* Clean Public Navigation */}
-      <Navbar onSignIn={openAuth} />
+      <Navbar
+        onSignIn={handleSignIn}
+        onSignUp={handleSignUp}
+        onEnterDemo={handleDemo}
+      />
 
       {/* Modal Dialog for Clerk Sign-In / Sign-Up */}
       {view !== "landing" && (
@@ -150,24 +160,24 @@ export default function Landing({ onEnterDemo }: LandingProps) {
             </span>
           </div>
 
-          <h1 style={{ fontFamily: "var(--font-hero-display)", fontSize: "clamp(2.6rem, 5vw, 4.4rem)", fontWeight: 800, color: "#FFF", lineHeight: 1.05, letterSpacing: "-0.04em", maxWidth: "1000px", margin: 0 }}>
-            When Every Agent Can Act,<br />
-            <span style={{ background: "linear-gradient(135deg, #00F0FF 0%, #7000FF 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", filter: "drop-shadow(0 0 30px rgba(0, 240, 255, 0.35))" }}>
-              Who Decides?
-            </span>
+          <h1 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2.5rem, 5.5vw, 4.5rem)", fontWeight: 900, lineHeight: 1.06, letterSpacing: "-0.035em", color: "#EEF1F8", maxWidth: "980px", margin: 0 }}>
+            Stop autonomous agents from <span style={{ background: "linear-gradient(135deg, #FF0055 0%, #FF5500 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>colliding over your revenue.</span>
           </h1>
 
-          <p style={{ fontSize: "clamp(1rem, 1.6vw, 1.2rem)", color: "#8E9BB0", maxWidth: "780px", lineHeight: 1.65, margin: 0 }}>
-            Autonomous commerce is creating a new financial coordination problem. Subscription agents, cart recovery bots, and retention swarms can independently make reasonable decisions—and collectively make the wrong one.
+          <p style={{ fontSize: "clamp(1rem, 1.8vw, 1.25rem)", color: "#8E9BB0", maxWidth: "800px", lineHeight: 1.6, margin: 0, fontWeight: 400 }}>
+            Enterprises deploy multiple AI agents for cart abandonment, renewals, and dunning. Without a central economic arbiter, they over-contact customers, erode margins with unnecessary discounts, and trigger race conditions. ReviveOS coordinates them all.
           </p>
 
-          <div style={{ fontSize: "14px", fontWeight: 700, color: "#CBD5E1", maxWidth: "720px" }}>
+          <div style={{ padding: "12px 24px", background: "rgba(0, 240, 255, 0.04)", border: "1px solid rgba(0, 240, 255, 0.15)", borderRadius: "10px", fontSize: "0.8125rem", color: "#A5F3FC", maxWidth: "720px", lineHeight: 1.5 }}>
             <strong>Razorpay moves the money. ReviveOS decides whether, when, and how it should move.</strong>
           </div>
 
           <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", justifyContent: "center", marginTop: "8px" }}>
+            {/* Enter Demo Mode Button */}
             <button
-              onClick={openAuth}
+              type="button"
+              onClick={handleDemo}
+              title="Launch synthetic NovaCart evaluation universe"
               style={{
                 padding: "14px 28px",
                 borderRadius: "10px",
@@ -186,8 +196,33 @@ export default function Landing({ onEnterDemo }: LandingProps) {
                 boxShadow: "0 6px 24px rgba(0, 240, 255, 0.35)",
               }}
             >
-              <span>ENTER RECOVERY ARENA</span>
+              <span>EXPLORE DEMO UNIVERSE</span>
               <ArrowRight size={15} strokeWidth={2.5} />
+            </button>
+
+            {/* Sign In Button */}
+            <button
+              type="button"
+              onClick={handleSignIn}
+              title="Sign in with your Clerk credentials"
+              style={{
+                padding: "14px 24px",
+                borderRadius: "10px",
+                background: "#0A0C10",
+                border: "1px solid #1E2230",
+                color: "#CBD5E1",
+                fontFamily: "var(--font-section-heading)",
+                fontSize: "13px",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <span>SIGN IN TO WORKSPACE</span>
             </button>
 
             <a
@@ -347,7 +382,7 @@ export default function Landing({ onEnterDemo }: LandingProps) {
 
         {/* ── SECTION 12: CONVERSION TERMINAL ─────────────────────── */}
         <section style={{ maxWidth: 1360, margin: "0 auto", padding: "0 28px", width: "100%" }}>
-          <ConversionTerminal onLaunchSandbox={openAuth} onConnectProvider={openAuth} />
+          <ConversionTerminal onLaunchSandbox={handleDemo} onConnectProvider={handleSignIn} />
         </section>
 
         {/* ── SECTION NEW-A: 5 QUESTIONS FRAMEWORK ─────────────────── */}
@@ -396,7 +431,8 @@ export default function Landing({ onEnterDemo }: LandingProps) {
             </p>
 
             <button
-              onClick={openAuth}
+              type="button"
+              onClick={handleDemo}
               style={{
                 padding: "16px 36px",
                 borderRadius: "10px",
@@ -429,7 +465,7 @@ export default function Landing({ onEnterDemo }: LandingProps) {
       </main>
 
       {/* Global Footer */}
-      <Footer onGetStarted={openAuth} />
+      <Footer onGetStarted={handleSignIn} />
     </div>
   );
 }

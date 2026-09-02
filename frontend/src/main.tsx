@@ -5,7 +5,19 @@ import { AuthErrorBoundary } from './components/AuthErrorBoundary'
 import './index.css'
 import App from './App.tsx'
 
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "pk_test_d2FybS1iYWJvb24tODU2MC5jbGVyay5hY2NvdW50cy5kZXYk";
+// Listen for Vite dynamic import chunk failures after deployments and reload cleanly
+window.addEventListener('vite:preloadError', (event) => {
+  console.warn('[ReviveOS] Stale chunk detected after deployment, reloading...', event);
+  const reloadKey = 'revive_preload_retry';
+  const lastReload = sessionStorage.getItem(reloadKey);
+  const now = Date.now();
+  if (!lastReload || now - parseInt(lastReload, 10) > 8000) {
+    sessionStorage.setItem(reloadKey, String(now));
+    window.location.reload();
+  }
+});
+
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "pk_test_aHVtYmxlLWtpdHRlbi04My5jbGVyay5hY2NvdW50cy5kZXYk";
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -254,16 +254,41 @@ export default function Dashboard() {
     return list;
   }, [portfolio, selectedBucketFilter, searchQuery]);
 
-  if (loading && !portfolio) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "24px", opacity: 0.5, padding: "24px" }}>
-        <div className="skeleton" style={{ height: "48px", width: "320px" }} />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "16px" }}>
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="skeleton" style={{ height: "120px" }} />
-          ))}
+  if (!portfolio) {
+    if (loading) {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px", opacity: 0.7, padding: "24px" }}>
+          <div className="skeleton" style={{ height: "48px", width: "320px" }} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "16px" }}>
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="skeleton" style={{ height: "120px" }} />
+            ))}
+          </div>
+          <div className="skeleton" style={{ height: "400px" }} />
         </div>
-        <div className="skeleton" style={{ height: "400px" }} />
+      );
+    }
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "360px", padding: "40px 24px", gap: "16px", textAlign: "center", background: "rgba(15, 23, 42, 0.4)", borderRadius: "16px", border: "1px solid rgba(59, 130, 246, 0.2)", margin: "24px" }}>
+        <div style={{ width: 50, height: 50, borderRadius: "50%", background: "rgba(59, 130, 246, 0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Zap size={24} color="#60A5FA" />
+        </div>
+        <h3 style={{ fontSize: "1.125rem", fontWeight: 700, color: "#F8FAFC", margin: 0 }}>
+          Synchronizing with ReviveOS Recovery Rails
+        </h3>
+        <p style={{ fontSize: "0.875rem", color: "#94A3B8", maxWidth: "480px", margin: 0, lineHeight: 1.5 }}>
+          The backend service is initializing or spinning up after idle state. Click retry to re-establish real-time connection.
+        </p>
+        <button
+          onClick={fetchInitialData}
+          disabled={loading}
+          className="btn btn-primary"
+          style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.875rem", padding: "10px 20px" }}
+        >
+          <RefreshCw size={14} className={loading ? "spin" : ""} />
+          <span>{loading ? "Connecting..." : "Retry Connection"}</span>
+        </button>
       </div>
     );
   }
@@ -1272,7 +1297,7 @@ export default function Dashboard() {
 
             {/* 4-Quadrant Regret Matrix */}
             <h4 style={{ margin: "0 0 10px 0", fontSize: "14px", fontWeight: 600 }}>
-              Decision Regret Breakdown ({settlementResult.good_decisions_pct}% Optimal Decisions)
+              Decision Regret Breakdown ({settlementResult?.good_decisions_pct ?? 0}% Optimal Decisions)
             </h4>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               {settlementResult.regret_summary?.map((r: any, i: number) => (
@@ -1410,8 +1435,8 @@ export default function Dashboard() {
             </h4>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
-              {arbitrationResult.all_proposals?.map((p: any, idx: number) => {
-                const isWinner = p.agent_type === arbitrationResult.winning_agent;
+              {arbitrationResult?.all_proposals?.map((p: any, idx: number) => {
+                const isWinner = p.agent_type === arbitrationResult?.winning_agent;
                 return (
                   <div
                     key={idx}

@@ -41,17 +41,26 @@ export const api = axios.create({
 
 api.interceptors.request.use(async (config) => {
   try {
-    const clerk = (window as any).Clerk;
-    if (clerk?.session) {
-      const token = await clerk.session.getToken();
-      if (token) {
-        config.headers = config.headers ?? {};
-        config.headers['Authorization'] = `Bearer ${token}`;
-      }
-    }
-    const env = localStorage.getItem('reviveai_active_environment') || 'DEMO';
+    const isDemo = localStorage.getItem('revive_demo_mode') === 'true';
     config.headers = config.headers ?? {};
-    config.headers['X-Revive-Environment'] = env;
+
+    if (isDemo) {
+      // Explicit Demo Universe evaluation
+      config.headers['Authorization'] = 'Bearer demo_evaluation_token';
+      config.headers['X-Revive-Mode'] = 'DEMO';
+      config.headers['X-Revive-Environment'] = 'DEMO';
+    } else {
+      const clerk = (window as any).Clerk;
+      if (clerk?.session) {
+        const token = await clerk.session.getToken();
+        if (token) {
+          config.headers['Authorization'] = `Bearer ${token}`;
+        }
+      }
+      const env = localStorage.getItem('reviveai_active_environment') || 'RAZORPAY_TEST';
+      config.headers['X-Revive-Environment'] = env;
+      config.headers['X-Revive-Mode'] = 'REAL';
+    }
   } catch (_) {}
   return config;
 });

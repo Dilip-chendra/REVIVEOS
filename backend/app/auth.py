@@ -82,6 +82,20 @@ async def get_current_user(
             if auth_header.startswith("Bearer "):
                 token = auth_header[7:]
 
+        # ── Explicit Demo Mode for Synthetic Evaluation (NovaCart) ────────────
+        is_demo_mode = (
+            token == "demo_evaluation_token" or
+            request.headers.get("X-Revive-Mode") == "DEMO" or
+            (request.headers.get("X-Revive-Environment") == "DEMO" and (not token or token == "demo_evaluation_token"))
+        )
+        if is_demo_mode:
+            user = await _get_or_create_dev_user(db)
+            from app.state import set_active_environment
+            set_active_environment(user.merchant_id, "DEMO")
+            if user.merchant_id != "default":
+                set_active_environment("default", "DEMO")
+            return user
+
         if not token:
             raise HTTPException(
                 status_code=401,

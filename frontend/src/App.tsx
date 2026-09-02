@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
@@ -15,38 +15,40 @@ import RawProviderInspectorModal from "./components/RawProviderInspectorModal";
 import { SidebarAccordion } from "./components/SidebarAccordion";
 import ErrorBoundary from "./components/ErrorBoundary";
 
-const Dashboard           = lazy(() => import("./pages/Dashboard"));
-const RiskView            = lazy(() => import("./pages/RiskView"));
-const CaseDetail          = lazy(() => import("./pages/CaseDetail"));
-const HumanReview         = lazy(() => import("./pages/HumanReview"));
-const AuditTrail          = lazy(() => import("./pages/AuditTrail"));
-const Evaluation          = lazy(() => import("./pages/Evaluation"));
-const Impact              = lazy(() => import("./pages/Impact"));
-const Insights            = lazy(() => import("./pages/Insights"));
-const Customers           = lazy(() => import("./pages/Customers"));
-const SettingsPage        = lazy(() => import("./pages/Settings"));
-const SecurityCenter      = lazy(() => import("./pages/SecurityCenter"));
-const EvaluatorMode       = lazy(() => import("./pages/EvaluatorMode"));
-const IntelligencePage    = lazy(() => import("./pages/IntelligencePage"));
-const GatewayIntelligence = lazy(() => import("./pages/GatewayIntelligence"));
-const FailureIntelligence = lazy(() => import("./pages/FailureIntelligence"));
-const WebhookStudio       = lazy(() => import("./pages/WebhookStudio"));
-const DeveloperHub        = lazy(() => import("./pages/DeveloperHub"));
-const RoiCalculator       = lazy(() => import("./pages/RoiCalculator"));
+import { lazyRetry } from "./utils/lazyRetry";
+
+const Dashboard           = lazyRetry(() => import("./pages/Dashboard"));
+const RiskView            = lazyRetry(() => import("./pages/RiskView"));
+const CaseDetail          = lazyRetry(() => import("./pages/CaseDetail"));
+const HumanReview         = lazyRetry(() => import("./pages/HumanReview"));
+const AuditTrail          = lazyRetry(() => import("./pages/AuditTrail"));
+const Evaluation          = lazyRetry(() => import("./pages/Evaluation"));
+const Impact              = lazyRetry(() => import("./pages/Impact"));
+const Insights            = lazyRetry(() => import("./pages/Insights"));
+const Customers           = lazyRetry(() => import("./pages/Customers"));
+const SettingsPage        = lazyRetry(() => import("./pages/Settings"));
+const SecurityCenter      = lazyRetry(() => import("./pages/SecurityCenter"));
+const EvaluatorMode       = lazyRetry(() => import("./pages/EvaluatorMode"));
+const IntelligencePage    = lazyRetry(() => import("./pages/IntelligencePage"));
+const GatewayIntelligence = lazyRetry(() => import("./pages/GatewayIntelligence"));
+const FailureIntelligence = lazyRetry(() => import("./pages/FailureIntelligence"));
+const WebhookStudio       = lazyRetry(() => import("./pages/WebhookStudio"));
+const DeveloperHub        = lazyRetry(() => import("./pages/DeveloperHub"));
+const RoiCalculator       = lazyRetry(() => import("./pages/RoiCalculator"));
 
 // ── ReviveOS 2.0 Core Engines ────────────────────────────────────────────────
-const CounterfactualLab   = lazy(() => import("./pages/CounterfactualLab").then(m => ({ default: m.CounterfactualLab })));
-const PolicyStudio        = lazy(() => import("./pages/PolicyStudio").then(m => ({ default: m.PolicyStudio })));
-const JudgeMode           = lazy(() => import("./pages/JudgeMode").then(m => ({ default: m.JudgeMode })));
-const ChaosLab            = lazy(() => import("./pages/ChaosLab").then(m => ({ default: m.ChaosLab })));
-const GatewayCommander    = lazy(() => import("./pages/GatewayCommander").then(m => ({ default: m.GatewayCommander })));
-const Experiments         = lazy(() => import("./pages/Experiments").then(m => ({ default: m.Experiments })));
-const RecruiterView       = lazy(() => import("./pages/RecruiterView").then(m => ({ default: m.RecruiterView })));
-const RevenueCopilot      = lazy(() => import("./pages/RevenueCopilot").then(m => ({ default: m.RevenueCopilot })));
-const CollisionLab        = lazy(() => import("./pages/CollisionLab").then(m => ({ default: m.CollisionLab })));
-const ToctouSimulator     = lazy(() => import("./pages/ToctouSimulator").then(m => ({ default: m.ToctouSimulator })));
-const RecoveryArena       = lazy(() => import("./pages/RecoveryArena").then(m => ({ default: m.RecoveryArena })));
-const OpportunityQueue    = lazy(() => import("./pages/OpportunityQueue"));
+const CounterfactualLab   = lazyRetry(() => import("./pages/CounterfactualLab").then(m => ({ default: m.CounterfactualLab })));
+const PolicyStudio        = lazyRetry(() => import("./pages/PolicyStudio").then(m => ({ default: m.PolicyStudio })));
+const JudgeMode           = lazyRetry(() => import("./pages/JudgeMode").then(m => ({ default: m.JudgeMode })));
+const ChaosLab            = lazyRetry(() => import("./pages/ChaosLab").then(m => ({ default: m.ChaosLab })));
+const GatewayCommander    = lazyRetry(() => import("./pages/GatewayCommander").then(m => ({ default: m.GatewayCommander })));
+const Experiments         = lazyRetry(() => import("./pages/Experiments").then(m => ({ default: m.Experiments })));
+const RecruiterView       = lazyRetry(() => import("./pages/RecruiterView").then(m => ({ default: m.RecruiterView })));
+const RevenueCopilot      = lazyRetry(() => import("./pages/RevenueCopilot").then(m => ({ default: m.RevenueCopilot })));
+const CollisionLab        = lazyRetry(() => import("./pages/CollisionLab").then(m => ({ default: m.CollisionLab })));
+const ToctouSimulator     = lazyRetry(() => import("./pages/ToctouSimulator").then(m => ({ default: m.ToctouSimulator })));
+const RecoveryArena       = lazyRetry(() => import("./pages/RecoveryArena").then(m => ({ default: m.RecoveryArena })));
+const OpportunityQueue    = lazyRetry(() => import("./pages/OpportunityQueue"));
 
 
 function PageLoader() {
@@ -609,14 +611,19 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      {isDemo ? (
-        <AuthenticatedApp onExitDemo={handleExitDemo} />
-      ) : (
-        <>
-          <SignedIn><AuthenticatedApp /></SignedIn>
-          <SignedOut><Landing onEnterDemo={handleEnterDemo} /></SignedOut>
-        </>
-      )}
+      <SignedIn>
+        {/* Real Authenticated ReviveOS Workspace (Clerk verified) */}
+        <AuthenticatedApp onExitDemo={isDemo ? handleExitDemo : undefined} />
+      </SignedIn>
+      <SignedOut>
+        {isDemo ? (
+          /* Synthetic NovaCart Evaluation Universe (explicit demo sandbox) */
+          <AuthenticatedApp onExitDemo={handleExitDemo} />
+        ) : (
+          /* Public Landing Page & Clerk Auth Gateway */
+          <Landing onEnterDemo={handleEnterDemo} />
+        )}
+      </SignedOut>
     </BrowserRouter>
   );
 }

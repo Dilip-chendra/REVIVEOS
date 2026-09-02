@@ -5,9 +5,10 @@ import { LogoIcon, LogoText } from "../Logo";
 interface NavbarProps {
   onSignIn: () => void;
   onSignUp?: () => void;
+  onEnterDemo?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onSignIn }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onSignIn, onSignUp, onEnterDemo }) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -67,8 +68,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onSignIn }) => {
         </nav>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-
+          {/* Sign In (Opens Clerk Modal) */}
           <button
+            type="button"
             onClick={onSignIn}
             style={{
               padding: "8px 16px",
@@ -86,31 +88,59 @@ export const Navbar: React.FC<NavbarProps> = ({ onSignIn }) => {
             Sign In
           </button>
 
-          <button
-            onClick={onSignIn}
-            style={{
-              padding: "9px 18px",
-              background: "linear-gradient(135deg, #00F0FF 0%, #0099FF 100%)",
-              border: "none",
-              borderRadius: "8px",
-              color: "#040711",
-              fontFamily: "var(--font-section-heading)",
-              fontSize: "12px",
-              fontWeight: 800,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              boxShadow: "0 4px 16px rgba(0, 240, 255, 0.3)",
-            }}
-          >
-            <span>ENTER ARENA</span>
-            <ArrowRight size={13} strokeWidth={2.5} />
-          </button>
+          {/* Sign Up (Opens Clerk Registration) */}
+          {onSignUp && (
+            <button
+              type="button"
+              onClick={onSignUp}
+              style={{
+                padding: "8px 16px",
+                background: "rgba(255, 255, 255, 0.05)",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+                borderRadius: "8px",
+                color: "#F8FAFC",
+                fontFamily: "var(--font-section-heading)",
+                fontSize: "12px",
+                fontWeight: 700,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+            >
+              Create Account
+            </button>
+          )}
+
+          {/* Demo Sandbox Button */}
+          {onEnterDemo && (
+            <button
+              type="button"
+              onClick={onEnterDemo}
+              title="Launch synthetic NovaCart evaluation universe"
+              style={{
+                padding: "9px 18px",
+                background: "linear-gradient(135deg, #00F0FF 0%, #0099FF 100%)",
+                border: "none",
+                borderRadius: "8px",
+                color: "#040711",
+                fontFamily: "var(--font-section-heading)",
+                fontSize: "12px",
+                fontWeight: 800,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                boxShadow: "0 4px 16px rgba(0, 240, 255, 0.3)",
+              }}
+            >
+              <span>EXPLORE DEMO</span>
+              <ArrowRight size={13} strokeWidth={2.5} />
+            </button>
+          )}
 
           <button
+            type="button"
             onClick={() => setMobileOpen(!mobileOpen)}
             style={{ background: "none", border: "none", color: "#8E9BB0", cursor: "pointer", padding: 4 }}
             className="md:hidden"
@@ -141,6 +171,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onSignIn }) => {
           ))}
           <div style={{ display: "flex", gap: 10, paddingTop: 10, borderTop: "1px solid #1E2230" }}>
             <button
+              type="button"
               onClick={() => {
                 setMobileOpen(false);
                 onSignIn();
@@ -149,20 +180,36 @@ export const Navbar: React.FC<NavbarProps> = ({ onSignIn }) => {
             >
               Sign In
             </button>
-            <button
-              onClick={() => {
-                setMobileOpen(false);
-                onSignIn();
-              }}
-              style={{ flex: 1, padding: "10px", borderRadius: 8, background: "#00F0FF", border: "none", color: "#040711", fontSize: 13, fontWeight: 800 }}
-            >
-              Enter Arena
-            </button>
+            {onSignUp && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false);
+                  onSignUp();
+                }}
+                style={{ flex: 1, padding: "10px", borderRadius: 8, background: "#1E293B", border: "1px solid #334155", color: "#FFF", fontSize: 13, fontWeight: 700 }}
+              >
+                Sign Up
+              </button>
+            )}
+            {onEnterDemo && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileOpen(false);
+                  onEnterDemo();
+                }}
+                style={{ flex: 1, padding: "10px", borderRadius: 8, background: "#00F0FF", border: "none", color: "#040711", fontSize: 13, fontWeight: 800 }}
+              >
+                Demo
+              </button>
+            )}
           </div>
         </div>
       )}
     </header>
   );
 };
+
 
 export default Navbar;
