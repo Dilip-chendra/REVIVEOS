@@ -27,6 +27,7 @@ export default function WhatsAppRecoveryMockup({
 }: WhatsAppMockupProps) {
   const [channel, setChannel] = useState<"whatsapp" | "sms">("whatsapp");
   const [paymentState, setPaymentState] = useState<"idle" | "authorizing" | "success">("idle");
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const [activeUpiApp] = useState<string>("GPay");
 
   const handle1TapPay = () => {
@@ -213,7 +214,11 @@ export default function WhatsAppRecoveryMockup({
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
                 <button
-                  onClick={() => alert("Simulated: Opening NetBanking Portal")}
+                  type="button"
+                  onClick={() => {
+                    setActionFeedback("Opening NetBanking portal in secure webview...");
+                    setTimeout(() => setActionFeedback(null), 3000);
+                  }}
                   style={{
                     background: "rgba(255,255,255,0.06)",
                     color: "var(--text-secondary)",
@@ -227,7 +232,11 @@ export default function WhatsAppRecoveryMockup({
                   NetBanking
                 </button>
                 <button
-                  onClick={() => alert("Simulated: Support ticket connected.")}
+                  type="button"
+                  onClick={() => {
+                    setActionFeedback("Support connected: Agent Priya joined chat.");
+                    setTimeout(() => setActionFeedback(null), 3000);
+                  }}
                   style={{
                     background: "rgba(255,255,255,0.06)",
                     color: "var(--text-secondary)",
@@ -241,6 +250,22 @@ export default function WhatsAppRecoveryMockup({
                   Need Help?
                 </button>
               </div>
+
+              {actionFeedback && (
+                <div style={{
+                  marginTop: "6px",
+                  padding: "5px 8px",
+                  borderRadius: "6px",
+                  background: "rgba(16, 185, 129, 0.15)",
+                  border: "1px solid rgba(16, 185, 129, 0.3)",
+                  color: "#34D399",
+                  fontSize: "0.65rem",
+                  fontWeight: 600,
+                  textAlign: "center",
+                }}>
+                  {actionFeedback}
+                </div>
+              )}
             </div>
 
             <div style={{ fontSize: "0.5625rem", color: "var(--text-tertiary)", textAlign: "right" }}>

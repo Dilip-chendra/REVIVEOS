@@ -140,7 +140,15 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({ portfolio, isRealM
             {label}
           </span>
         </div>
-        <button style={{ background: "none", border: "none", color: "#64748B", cursor: "pointer" }}>
+        <button
+          type="button"
+          aria-label="Toggle executive command center"
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(!expanded);
+          }}
+          style={{ background: "none", border: "none", color: "#64748B", cursor: "pointer" }}
+        >
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
       </div>

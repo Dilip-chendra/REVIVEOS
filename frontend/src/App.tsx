@@ -96,10 +96,6 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
   const [showInspectorModal, setShowInspectorModal] = useState(false);
   const [razorpayStatus, setRazorpayStatus] = useState<any>(null);
 
-  useEffect(() => {
-    loadProviderStatus();
-  }, []);
-
   const loadProviderStatus = async () => {
     try {
       const res = await getRazorpayStatus();
@@ -108,6 +104,10 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
       console.error(e);
     }
   };
+
+  useEffect(() => {
+    loadProviderStatus();
+  }, []);
 
   const handleDemo = async () => {
     try {

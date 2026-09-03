@@ -573,6 +573,22 @@ MCP_TOOL_DEFINITIONS = [
 ]
 
 
+@router.get("/telemetry/timeline")
+async def get_agent_timeline(
+    limit: int = 50,
+    current_user: Optional[User] = Depends(get_current_user)
+):
+    """Fetch recent agent telemetry and arbitration decision events."""
+    mid = current_user.merchant_id if current_user else "default"
+    from app.state import get_audit_trail
+    events = get_audit_trail(mid)
+    agent_events = [
+        e for e in events
+        if any(k in e.get("event_type", "") for k in ("AGENT", "ARBITRATION", "PROPOSAL", "COLLISION", "CONTRACT"))
+    ]
+    return agent_events[:limit] if agent_events else events[:limit]
+
+
 @router.get("/mcp/manifest")
 async def get_mcp_manifest():
     return {
