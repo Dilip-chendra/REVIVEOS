@@ -41,7 +41,8 @@ export const api = axios.create({
 
 api.interceptors.request.use(async (config) => {
   try {
-    const isDemo = localStorage.getItem('revive_demo_mode') === 'true';
+    const appMode = localStorage.getItem('revive_app_mode');
+    const isDemo = appMode ? appMode === 'demo' : localStorage.getItem('revive_demo_mode') === 'true';
     config.headers = config.headers ?? {};
 
     if (isDemo) {
@@ -50,6 +51,7 @@ api.interceptors.request.use(async (config) => {
       config.headers['X-Revive-Mode'] = 'DEMO';
       config.headers['X-Revive-Environment'] = 'DEMO';
     } else {
+      // Strict Real Mode
       const clerk = (window as any).Clerk;
       if (clerk?.session) {
         const token = await clerk.session.getToken();

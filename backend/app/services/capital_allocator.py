@@ -115,6 +115,7 @@ class PortfolioAllocationResult:
     abstention_ledger: List[Dict[str, Any]]
     historical_ledger: List[Dict[str, Any]]
     frontier_curve: List[Dict[str, Any]]
+    is_real_provider_data: bool = False
 
 
 class RecoveryCapitalAllocator:
@@ -220,8 +221,9 @@ class RecoveryCapitalAllocator:
         from app.state import get_state
         state = get_state(merchant_id)
         env = state.get("active_environment", "DEMO")
-        
-        if env in ("RAZORPAY_TEST", "RAZORPAY_LIVE"):
+        env_is_real = env in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL")
+
+        if env_is_real:
             raw_cases = state.get("cases", [])
             raw_opps = []
             for raw in raw_cases:
@@ -452,6 +454,7 @@ class RecoveryCapitalAllocator:
             abstention_ledger=[opp_to_dict(o) for o in abstention_ledger],
             historical_ledger=historical_items[:50],
             frontier_curve=frontier_points,
+            is_real_provider_data=env_is_real,
         )
 
     def _compute_frontier_curve(self, candidates: List[Opportunity], contact_limit: int) -> List[Dict[str, Any]]:

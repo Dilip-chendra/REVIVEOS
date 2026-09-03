@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getRazorpayStatus, setRazorpayEnvironment } from '../api/client';
 
-export type Environment = 'DEMO' | 'RAZORPAY_LIVE';
+export type Environment = 'DEMO' | 'RAZORPAY_LIVE' | 'RAZORPAY_TEST';
 
 interface EnvironmentContextType {
   environment: Environment;
@@ -22,8 +22,12 @@ const STORAGE_KEY = 'reviveai_active_environment';
 export const EnvironmentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [environment, setEnvironmentState] = useState<Environment>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === 'RAZORPAY_LIVE') {
-      return 'RAZORPAY_LIVE';
+    if (saved === 'RAZORPAY_LIVE' || saved === 'RAZORPAY_TEST') {
+      return saved as Environment;
+    }
+    const appMode = localStorage.getItem('revive_app_mode');
+    if (appMode === 'real') {
+      return 'RAZORPAY_TEST';
     }
     return 'DEMO';
   });
@@ -35,7 +39,8 @@ export const EnvironmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const status = await getRazorpayStatus();
       setProviderStatus(status);
       if (status?.active_environment) {
-        const env = status.active_environment === 'RAZORPAY_LIVE' ? 'RAZORPAY_LIVE' : 'DEMO';
+        const raw = status.active_environment;
+        const env = (raw === 'RAZORPAY_LIVE' || raw === 'RAZORPAY_TEST') ? raw : 'DEMO';
         setEnvironmentState(env);
         localStorage.setItem(STORAGE_KEY, env);
       }

@@ -15,11 +15,13 @@ import {
 import RazorpayConnectionModal from "../components/RazorpayConnectionModal";
 import LiveRazorpayLinkModal from "../components/LiveRazorpayLinkModal";
 import { ExplainableTerm, FriendlyStatusBadge, ProvenanceBadge } from "../components/ExplainableTerm";
+import { useAppMode } from "../context/AppModeContext";
 
 const formatINR = (value: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
 
 export default function Dashboard() {
+  const { currentMode, isRealMode } = useAppMode();
   const [portfolio, setPortfolio] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [optimizing, setOptimizing] = useState(false);
@@ -53,13 +55,6 @@ export default function Dashboard() {
   const [contactSlider, setContactSlider] = useState<number>(50);
   const [reserveSlider, setReserveSlider] = useState<number>(20);
 
-  const isRealMode = Boolean(
-    portfolio?.is_real_provider_data ||
-    localStorage.getItem("reviveai_active_environment") === "RAZORPAY_TEST" ||
-    localStorage.getItem("reviveai_active_environment") === "RAZORPAY_LIVE" ||
-    localStorage.getItem("reviveai_active_environment") === "REAL"
-  );
-
   const fetchInitialData = async () => {
     try {
       setLoading(true);
@@ -90,7 +85,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchInitialData();
-  }, []);
+  }, [currentMode]);
 
   const handleBudgetChange = async (newBudget: number, newContacts: number, newReserve: number = reserveSlider) => {
     setBudgetSlider(newBudget);
@@ -933,6 +928,41 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
+                  {filteredOpportunities.length === 0 && (
+                    <tr>
+                      <td colSpan={10} style={{ padding: "48px 24px", textAlign: "center" }}>
+                        <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center" }}>
+                          <CheckCircle2 size={36} color={isRealMode ? "#10B981" : "#64748B"} style={{ marginBottom: 12 }} />
+                          <h4 style={{ margin: "0 0 6px", fontSize: "15px", fontWeight: 700, color: "#F8FAFC" }}>
+                            {isRealMode ? "Real Mode: 0 Active Recovery Opportunities" : "0 Opportunities Found"}
+                          </h4>
+                          <p style={{ margin: "0 0 16px", maxWidth: 520, fontSize: "13px", color: "#94A3B8", lineHeight: 1.5 }}>
+                            {isRealMode
+                              ? "Connected to authenticated Razorpay test rails (rzp_test_TVwFUQgZPsAmiC). Zero failed payments or declined mandates are currently recorded on this account."
+                              : "No opportunities match the selected bucket filter."}
+                          </p>
+                          {isRealMode && (
+                            <div style={{ display: "flex", gap: 12 }}>
+                              <button
+                                onClick={() => setShowLiveLinkModal(true)}
+                                className="btn btn-primary"
+                                style={{ fontSize: "12px", padding: "6px 14px" }}
+                              >
+                                Create Test Payment Link
+                              </button>
+                              <button
+                                onClick={() => setShowConnectModal(true)}
+                                className="btn btn-secondary"
+                                style={{ fontSize: "12px", padding: "6px 14px" }}
+                              >
+                                View Connection Details
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   {filteredOpportunities.map((opp: any) => {
                     const isPursue = opp.bucket === "PURSUE";
                     const isHuman = opp.bucket === "HUMAN_REVIEW";

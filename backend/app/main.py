@@ -148,7 +148,7 @@ from app.routers import (
     portfolio,
     agents,
 )
-from app.routers import arbitration, toctou, benchmark, opportunity_queue, attribution
+from app.routers import arbitration, toctou, benchmark, opportunity_queue, attribution, recovery_experiment
 
 auth_deps = [Depends(get_current_user)]
 
@@ -159,6 +159,7 @@ app.include_router(dashboard.router,         prefix="/api", tags=["Dashboard"], 
 app.include_router(opportunity_queue.router, prefix="/api", tags=["Opportunity Queue"],       dependencies=auth_deps)
 app.include_router(attribution.router,       prefix="/api", tags=["Attribution & Benchmark"], dependencies=auth_deps)
 app.include_router(portfolio.router,         prefix="/api", tags=["Recovery Capital Portfolio"], dependencies=auth_deps)
+app.include_router(recovery_experiment.router, prefix="/api", tags=["Recovery Experiments & Innovation"], dependencies=auth_deps)
 app.include_router(agents.router,            prefix="/api", tags=["Agent Interoperability Gateway"])
 app.include_router(recovery.router,          prefix="/api", tags=["Recovery"],                dependencies=auth_deps)
 app.include_router(simulation.router,        prefix="/api", tags=["Simulation"],              dependencies=auth_deps)

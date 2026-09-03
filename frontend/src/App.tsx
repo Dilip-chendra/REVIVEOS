@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, NavLink, useLocation } from "react-router
 import { AnimatePresence, motion } from "framer-motion";
 import { SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
 import { Settings, LogOut, Zap, Code2, Sparkles, Scale, ShieldCheck, Menu, X } from "lucide-react";
-import { resetDemo, getOnboardingStatus, getRazorpayStatus, switchEnvironment, syncRazorpayNow } from "./api/client";
+import { resetDemo, getOnboardingStatus, getRazorpayStatus, syncRazorpayNow } from "./api/client";
 import Landing from "./pages/Landing";
 import OnboardingWizard from "./pages/OnboardingWizard";
 import { LogoIcon, LogoText } from "./components/Logo";
@@ -14,6 +14,7 @@ import RazorpayConnectionModal from "./components/RazorpayConnectionModal";
 import RawProviderInspectorModal from "./components/RawProviderInspectorModal";
 import { SidebarAccordion } from "./components/SidebarAccordion";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { AppModeProvider, useAppMode } from "./context/AppModeContext";
 
 import { lazyRetry } from "./utils/lazyRetry";
 
@@ -49,6 +50,7 @@ const CollisionLab        = lazyRetry(() => import("./pages/CollisionLab").then(
 const ToctouSimulator     = lazyRetry(() => import("./pages/ToctouSimulator").then(m => ({ default: m.ToctouSimulator })));
 const RecoveryArena       = lazyRetry(() => import("./pages/RecoveryArena").then(m => ({ default: m.RecoveryArena })));
 const OpportunityQueue    = lazyRetry(() => import("./pages/OpportunityQueue"));
+const RecoveryExperimentLab = lazyRetry(() => import("./pages/RecoveryExperimentLab"));
 
 
 function PageLoader() {
@@ -83,6 +85,7 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 }
 
 function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
+  const { isDemoMode, isRealMode, setMode } = useAppMode();
   const [showPitch, setShowPitch] = useState(false);
   const [showCompliance, setShowCompliance] = useState(false);
   const [showDefense, setShowDefense] = useState(false);
@@ -112,16 +115,6 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
     }
   };
 
-  const handleSwitchEnv = async (targetEnv: "DEMO" | "RAZORPAY_TEST" | "RAZORPAY_LIVE") => {
-    try {
-      localStorage.setItem("reviveai_active_environment", targetEnv);
-      await switchEnvironment(targetEnv);
-      await loadProviderStatus();
-      window.location.reload();
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const currentEnv = razorpayStatus?.active_environment || "DEMO";
@@ -231,14 +224,17 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
             }}>
               <button
                 type="button"
-                onClick={() => handleSwitchEnv("DEMO")}
+                onClick={async () => {
+                  await setMode("demo");
+                  window.location.reload();
+                }}
                 style={{
                   padding: "4px 12px",
                   borderRadius: "7px",
                   border: "none",
-                  background: (!isConnected || currentEnv === "DEMO") ? "rgba(59, 130, 246, 0.22)" : "transparent",
-                  color: (!isConnected || currentEnv === "DEMO") ? "#60A5FA" : "#94A3B8",
-                  fontWeight: (!isConnected || currentEnv === "DEMO") ? 800 : 600,
+                  background: isDemoMode ? "rgba(59, 130, 246, 0.22)" : "transparent",
+                  color: isDemoMode ? "#60A5FA" : "#94A3B8",
+                  fontWeight: isDemoMode ? 800 : 600,
                   fontSize: "0.75rem",
                   cursor: "pointer",
                   display: "flex",
@@ -248,20 +244,25 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                   whiteSpace: "nowrap",
                 }}
               >
-                <span style={{ fontSize: "0.55rem" }}>●</span>
+                <span style={{ fontSize: "0.65rem", color: isDemoMode ? "#60A5FA" : "#64748B" }}>
+                  {isDemoMode ? "●" : "○"}
+                </span>
                 <span>Demo Mode</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleSwitchEnv("RAZORPAY_TEST")}
+                onClick={async () => {
+                  await setMode("real");
+                  window.location.reload();
+                }}
                 style={{
                   padding: "4px 12px",
                   borderRadius: "7px",
                   border: "none",
-                  background: (currentEnv === "RAZORPAY_TEST" || currentEnv === "RAZORPAY_LIVE" || currentEnv === "REAL") ? "rgba(16, 185, 129, 0.22)" : "transparent",
-                  color: (currentEnv === "RAZORPAY_TEST" || currentEnv === "RAZORPAY_LIVE" || currentEnv === "REAL") ? "#10B981" : "#94A3B8",
-                  fontWeight: (currentEnv === "RAZORPAY_TEST" || currentEnv === "RAZORPAY_LIVE" || currentEnv === "REAL") ? 800 : 600,
+                  background: isRealMode ? "rgba(59, 130, 246, 0.22)" : "transparent",
+                  color: isRealMode ? "#60A5FA" : "#94A3B8",
+                  fontWeight: isRealMode ? 800 : 600,
                   fontSize: "0.75rem",
                   cursor: "pointer",
                   display: "flex",
@@ -271,7 +272,9 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                   whiteSpace: "nowrap",
                 }}
               >
-                <span style={{ fontSize: "0.55rem", color: (currentEnv === "RAZORPAY_TEST" || currentEnv === "RAZORPAY_LIVE" || currentEnv === "REAL") ? "#10B981" : "#64748B" }}>●</span>
+                <span style={{ fontSize: "0.65rem", color: isRealMode ? "#60A5FA" : "#64748B" }}>
+                  {isRealMode ? "●" : "○"}
+                </span>
                 <span>Real Mode</span>
               </button>
             </div>
@@ -505,6 +508,7 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
               <PageTransition>
                 <Routes>
                   <Route path="/"                      element={<Dashboard />} />
+                  <Route path="/recovery-experiments"  element={<RecoveryExperimentLab />} />
                   <Route path="/opportunities"         element={<OpportunityQueue />} />
                   <Route path="/collision-lab"         element={<CollisionLab />} />
                   <Route path="/toctou"                element={<ToctouSimulator />} />
@@ -610,20 +614,22 @@ export default function App() {
   };
 
   return (
-    <BrowserRouter>
-      <SignedIn>
-        {/* Real Authenticated ReviveOS Workspace (Clerk verified) */}
-        <AuthenticatedApp onExitDemo={isDemo ? handleExitDemo : undefined} />
-      </SignedIn>
-      <SignedOut>
-        {isDemo ? (
-          /* Synthetic NovaCart Evaluation Universe (explicit demo sandbox) */
-          <AuthenticatedApp onExitDemo={handleExitDemo} />
-        ) : (
-          /* Public Landing Page & Clerk Auth Gateway */
-          <Landing onEnterDemo={handleEnterDemo} />
-        )}
-      </SignedOut>
-    </BrowserRouter>
+    <AppModeProvider>
+      <BrowserRouter>
+        <SignedIn>
+          {/* Real Authenticated ReviveOS Workspace (Clerk verified) */}
+          <AuthenticatedApp onExitDemo={isDemo ? handleExitDemo : undefined} />
+        </SignedIn>
+        <SignedOut>
+          {isDemo ? (
+            /* Synthetic NovaCart Evaluation Universe (explicit demo sandbox) */
+            <AuthenticatedApp onExitDemo={handleExitDemo} />
+          ) : (
+            /* Public Landing Page & Clerk Auth Gateway */
+            <Landing onEnterDemo={handleEnterDemo} />
+          )}
+        </SignedOut>
+      </BrowserRouter>
+    </AppModeProvider>
   );
 }

@@ -4,6 +4,7 @@ import {
   ShieldCheck, Filter, Cpu, Award, RefreshCw, Loader2
 } from "lucide-react";
 import { api } from "../api/client";
+import { useAppMode } from "../context/AppModeContext";
 
 interface OpportunityItem {
   case_id: string;
@@ -59,6 +60,7 @@ interface SimulationResult {
 }
 
 export default function OpportunityQueue() {
+  const { currentMode } = useAppMode();
   const [queueData, setQueueData] = useState<OpportunityItem[]>([]);
   const [totalStats, setTotalStats] = useState({
     total_count: 0,
@@ -74,7 +76,7 @@ export default function OpportunityQueue() {
 
   useEffect(() => {
     loadQueue();
-  }, [selectedUrgency, selectedDecision]);
+  }, [selectedUrgency, selectedDecision, currentMode]);
 
   const loadQueue = async () => {
     setLoading(true);
@@ -211,6 +213,17 @@ export default function OpportunityQueue() {
 
       {/* Opportunities List */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {queueData.length === 0 && !loading && (
+          <div style={{ padding: "48px 24px", textAlign: "center", background: "#0F172A", borderRadius: 10, border: "1px solid rgba(148, 163, 184, 0.15)" }}>
+            <ShieldCheck size={36} color="#34D399" style={{ margin: "0 auto 12px" }} />
+            <h4 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#F8FAFC" }}>
+              0 Active Opportunities in Current Filter
+            </h4>
+            <p style={{ margin: "0 auto", maxWidth: 460, fontSize: 13, color: "#94A3B8" }}>
+              No failed payments, checkout drops, or subscription retry events match the selected criteria.
+            </p>
+          </div>
+        )}
         {queueData.map((opp) => (
           <div
             key={opp.case_id}

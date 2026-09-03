@@ -63,6 +63,7 @@ export const NAVIGATION_CATEGORIES: NavCategory[] = [
     label: 'INCREMENTAL YIELD & REGRET',
     icon: TrendingUp,
     items: [
+      { to: '/recovery-experiments', label: 'Recovery Experiment Lab', icon: FlaskConical },
       { to: '/impact', label: 'Incremental Recovery Yield', icon: TrendingUp },
       { to: '/experiments', label: 'Holdout A/B Experiments', icon: FlaskConical },
       { to: '/calculator', label: 'ROI & Pricing Model', icon: Calculator },

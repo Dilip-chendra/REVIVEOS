@@ -72,22 +72,49 @@ async def get_current_user(
     Dev bypass: if CLERK_SECRET_KEY is not configured, returns a synthetic
     dev user (one per DB session) — safe only for local development.
     """
+    token: Optional[str] = credentials.credentials if credentials else None
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+
+    x_mode = (request.headers.get("X-Revive-Mode") or "").strip().upper()
+    if x_mode == "REAL" and not token:
+        raise HTTPException(
+            status_code=401,
+            detail="Your session has expired. Please sign in again.",
+        )
+
     if _IS_DEV_BYPASS:
         user = await _get_or_create_dev_user(db)
+        env_header = (request.headers.get("X-Revive-Environment") or "").strip().upper()
+        from app.state import set_active_environment
+        if env_header in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "DEMO"):
+            set_active_environment(user.merchant_id, env_header)
+            if user.merchant_id != "default":
+                set_active_environment("default", env_header)
+        elif x_mode == "REAL":
+            set_active_environment(user.merchant_id, "RAZORPAY_TEST")
+            if user.merchant_id != "default":
+                set_active_environment("default", "RAZORPAY_TEST")
+        elif x_mode == "DEMO":
+            set_active_environment(user.merchant_id, "DEMO")
+            if user.merchant_id != "default":
+                set_active_environment("default", "DEMO")
+        return user
     else:
-        # ── Extract Bearer token ──────────────────────────────────────────────
-        token: Optional[str] = credentials.credentials if credentials else None
-        if not token:
-            auth_header = request.headers.get("Authorization", "")
-            if auth_header.startswith("Bearer "):
-                token = auth_header[7:]
 
         # ── Explicit Demo Mode for Synthetic Evaluation (NovaCart) ────────────
-        is_demo_mode = (
-            token == "demo_evaluation_token" or
-            request.headers.get("X-Revive-Mode") == "DEMO" or
-            (request.headers.get("X-Revive-Environment") == "DEMO" and (not token or token == "demo_evaluation_token"))
-        )
+        x_mode = (request.headers.get("X-Revive-Mode") or "").strip().upper()
+        if x_mode == "REAL":
+            is_demo_mode = False
+        else:
+            is_demo_mode = (
+                token == "demo_evaluation_token" or
+                x_mode == "DEMO" or
+                (request.headers.get("X-Revive-Environment") == "DEMO" and (not token or token == "demo_evaluation_token"))
+            )
+
         if is_demo_mode:
             user = await _get_or_create_dev_user(db)
             from app.state import set_active_environment
