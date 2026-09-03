@@ -110,14 +110,18 @@ class CredentialStore:
         clean_secret = key_secret.strip()
         clean_wh = webhook_secret.strip() if webhook_secret else ""
         
-        # If masked placeholder values were submitted, preserve existing real credentials
-        existing = self.get_credentials(merchant_id, provider)
-        if self.is_masked_value(clean_key) and existing.get("key_id") and not self.is_masked_value(existing["key_id"]):
-            clean_key = existing["key_id"]
-        if self.is_masked_value(clean_secret) and existing.get("key_secret") and not self.is_masked_value(existing["key_secret"]):
-            clean_secret = existing["key_secret"]
-        if self.is_masked_value(clean_wh) and existing.get("webhook_secret") and not self.is_masked_value(existing["webhook_secret"]):
-            clean_wh = existing["webhook_secret"]
+        # If masked placeholder values were submitted, preserve existing real credentials from this merchant's own store
+        existing_rec = self._store.get(f"{merchant_id}:{provider}")
+        if existing_rec:
+            existing_key = existing_rec.get("key_id", "")
+            existing_sec = self._decrypt(existing_rec.get("encrypted_key_secret", "")) if existing_rec.get("encrypted_key_secret") else ""
+            existing_wh = self._decrypt(existing_rec.get("encrypted_webhook_secret", "")) if existing_rec.get("encrypted_webhook_secret") else ""
+            if self.is_masked_value(clean_key) and existing_key and not self.is_masked_value(existing_key):
+                clean_key = existing_key
+            if self.is_masked_value(clean_secret) and existing_sec and not self.is_masked_value(existing_sec):
+                clean_secret = existing_sec
+            if self.is_masked_value(clean_wh) and existing_wh and not self.is_masked_value(existing_wh):
+                clean_wh = existing_wh
 
         detected_env = "live" if clean_key.startswith("rzp_live_") else "test"
         final_env = environment or detected_env
