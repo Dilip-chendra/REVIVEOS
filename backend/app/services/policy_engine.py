@@ -131,8 +131,10 @@ ALLOWED_AUTOMATED_ACTIONS = {
     "retry",
     "route_switch",
     "send_reminder",
+    "reminder",
     "send_followup",
     "schedule_retry",
+    "schedule_mandate_retry",
     "mark_recovered",
     "customer_recovery_link",
 }

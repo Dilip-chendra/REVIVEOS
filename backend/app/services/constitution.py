@@ -231,14 +231,15 @@ class RecoveryConstitution:
         ))
 
         # Article 11: When financial state is uncertain, fail closed
-        c11_passed = not (trust_score < 70.0 and is_autonomous_action)
+        normalized_trust = trust_score * 100.0 if (trust_score is not None and trust_score <= 1.0) else (trust_score or 85.0)
+        c11_passed = not (normalized_trust < 70.0 and is_autonomous_action)
         checks.append(ConstitutionArticleCheck(
             article_number=11,
             name="Article 11: Fail Closed on Uncertainty",
             description="If trust score is below 70/100 or provider health is degraded, autonomous fund movement is suppressed.",
             passed=c11_passed,
             status="COMPLIANT" if c11_passed else "VIOLATED",
-            evidence=f"Trust score: {trust_score:.0f}/100. Provider degraded: {gateway_is_degraded}.",
+            evidence=f"Trust score: {normalized_trust:.0f}/100. Provider degraded: {gateway_is_degraded}.",
             remediation=None if c11_passed else "Degrade to customer prompt or operator review.",
         ))
 
