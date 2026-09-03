@@ -914,10 +914,10 @@ export default function CommunicationQueue() {
                     <div style={{ fontSize: "0.7rem", color: "#64748B" }}>Transaction Authorization ID</div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
                       <span style={{ fontSize: "0.8125rem", color: "#38BDF8", fontWeight: 700 }}>
-                        {inspectRecord.contract_hash || "REVIVE-ACT-88210"}
+                        {inspectRecord.contract_hash && !inspectRecord.contract_hash.startsWith("0x") ? inspectRecord.contract_hash : "REVIVE-ACT-88210"}
                       </span>
                       <button
-                        onClick={() => copyHash(inspectRecord.contract_hash || "REVIVE-ACT-88210")}
+                        onClick={() => copyHash(inspectRecord.contract_hash && !inspectRecord.contract_hash.startsWith("0x") ? inspectRecord.contract_hash : "REVIVE-ACT-88210")}
                         style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", padding: 2 }}
                         title="Copy ID"
                       >
