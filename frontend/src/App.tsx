@@ -592,7 +592,13 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                   <Route path="/evaluation"            element={<Evaluation />} />
                   <Route path="/settings"              element={<SettingsPage />} />
                   <Route path="/recovery"              element={<OpportunityQueue />} />
+                  <Route path="/queue"                 element={<OpportunityQueue />} />
+                  <Route path="/portfolio"             element={<OpportunityQueue />} />
                   <Route path="/cases"                 element={<OpportunityQueue />} />
+                  <Route path="/desk"                  element={<Dashboard />} />
+                  <Route path="/dashboard"             element={<Dashboard />} />
+                  <Route path="/simulator"             element={<CounterfactualLab />} />
+                  <Route path="/developers"            element={<DeveloperHub />} />
                   <Route path="*"                      element={<Dashboard />} />
                 </Routes>
               </PageTransition>
