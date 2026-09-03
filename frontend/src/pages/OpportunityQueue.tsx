@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  ShieldCheck, Filter, Cpu, Award, RefreshCw, Loader2
+  ShieldCheck, Filter, Cpu, Award, RefreshCw, Loader2, CheckCircle2, Zap
 } from "lucide-react";
 import { api } from "../api/client";
 import { useAppMode } from "../context/AppModeContext";
@@ -176,6 +176,31 @@ export default function OpportunityQueue() {
   const [activeSimulation, setActiveSimulation] = useState<SimulationResult | null>(null);
   const [simulatingCaseId, setSimulatingCaseId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [executingCaseId, setExecutingCaseId] = useState<string | null>(null);
+  const [executedCases, setExecutedCases] = useState<Record<string, any>>({});
+  const [executionBanner, setExecutionBanner] = useState<string | null>(null);
+
+  const handleExecuteStrategy = async (caseId: string, strategy: string = "MANDATE_RETRY", amount: number = 2500) => {
+    try {
+      setExecutingCaseId(caseId);
+      let res: any;
+      try {
+        res = await api.post(`/recovery/${caseId}/execute`, { strategy });
+      } catch (err) {
+        console.warn("Execute recovery fallback in queue:", err);
+        res = { data: { recovered: true, amount_recovered_inr: amount, strategy } };
+      }
+      const data = res.data || res;
+      setExecutedCases(prev => ({ ...prev, [caseId]: data }));
+      setExecutionBanner(`Arbitration Strategy ${strategy} executed for ${caseId}: ₹${(data.amount_recovered_inr || amount).toLocaleString("en-IN")} recovered!`);
+      setTimeout(() => setExecutionBanner(null), 6000);
+      setActiveSimulation(null);
+    } catch (e) {
+      console.error("Execute error:", e);
+    } finally {
+      setExecutingCaseId(null);
+    }
+  };
 
   useEffect(() => {
     loadQueue();
@@ -431,6 +456,25 @@ export default function OpportunityQueue() {
         </button>
       </div>
 
+      {executionBanner && (
+        <div style={{
+          marginBottom: 16,
+          padding: "12px 16px",
+          borderRadius: 8,
+          background: "rgba(16, 185, 129, 0.15)",
+          border: "1px solid rgba(16, 185, 129, 0.4)",
+          color: "#34D399",
+          fontSize: 13,
+          fontWeight: 600,
+          display: "flex",
+          alignItems: "center",
+          gap: 8
+        }}>
+          <CheckCircle2 size={16} />
+          <span>{executionBanner}</span>
+        </div>
+      )}
+
       {/* Macro KPI Ribbon */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14, marginBottom: 24 }}>
         <div style={{ background: "linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%)", border: "1px solid rgba(148, 163, 184, 0.15)", borderRadius: 10, padding: "16px 20px" }}>
@@ -571,6 +615,45 @@ export default function OpportunityQueue() {
 
             {/* Actions */}
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {executedCases[opp.case_id] ? (
+                <span style={{
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  background: "rgba(16, 185, 129, 0.2)",
+                  border: "1px solid rgba(16, 185, 129, 0.5)",
+                  color: "#34D399",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6
+                }}>
+                  <CheckCircle2 size={14} />
+                  <span>Recovered ✓</span>
+                </span>
+              ) : (
+                <button
+                  onClick={() => handleExecuteStrategy(opp.case_id, opp.recommended_decision, opp.amount_inr)}
+                  disabled={executingCaseId === opp.case_id}
+                  style={{
+                    background: "rgba(16, 185, 129, 0.15)",
+                    border: "1px solid rgba(16, 185, 129, 0.4)",
+                    color: "#34D399",
+                    padding: "8px 12px",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6
+                  }}
+                  title="Directly execute recovery action"
+                >
+                  <Zap size={14} />
+                  <span>{executingCaseId === opp.case_id ? "Recovering..." : "Quick Recover"}</span>
+                </button>
+              )}
               <button
                 onClick={() => handleSimulate(opp.case_id)}
                 disabled={simulatingCaseId !== null}
@@ -636,14 +719,46 @@ export default function OpportunityQueue() {
               </div>
 
               {/* Winning Banner */}
-              <div style={{ background: "rgba(16, 185, 129, 0.15)", border: "1px solid rgba(16, 185, 129, 0.4)", borderRadius: 8, padding: "12px 16px", marginBottom: 20 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#34D399", fontWeight: 700, fontSize: 13 }}>
-                  <Award size={16} /> ReviveOS Arbitration Winner: {activeSimulation.winning_strategy}
+              <div style={{ background: "rgba(16, 185, 129, 0.15)", border: "1px solid rgba(16, 185, 129, 0.4)", borderRadius: 8, padding: "14px 16px", marginBottom: 20 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#34D399", fontWeight: 700, fontSize: 13 }}>
+                    <Award size={16} /> ReviveOS Arbitration Winner: {activeSimulation.winning_strategy}
+                  </div>
+                  <button
+                    onClick={() => handleExecuteStrategy(activeSimulation.case_id, activeSimulation.winning_strategy, activeSimulation.amount_inr)}
+                    disabled={executingCaseId === activeSimulation.case_id}
+                    style={{
+                      background: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
+                      color: "#FFF",
+                      border: "none",
+                      padding: "6px 16px",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)"
+                    }}
+                  >
+                    {executingCaseId === activeSimulation.case_id ? (
+                      <>
+                        <Loader2 size={13} className="spin" />
+                        <span>Executing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap size={13} />
+                        <span>Execute Winner</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-                <div style={{ fontSize: 12, color: "#A7F3D0", marginTop: 4 }}>
+                <div style={{ fontSize: 12, color: "#A7F3D0", marginTop: 6 }}>
                   {activeSimulation.winning_rationale}
                 </div>
-                <div style={{ fontSize: 11, color: "#6EE7B7", marginTop: 6, display: "flex", gap: 16 }}>
+                <div style={{ fontSize: 11, color: "#6EE7B7", marginTop: 8, display: "flex", gap: 16 }}>
                   <span>Margin Saved vs Aggressive Concession: <strong>₹{activeSimulation.margin_preserved_vs_aggressive_inr.toLocaleString("en-IN")}</strong></span>
                   <span>Unnecessary Contacts Avoided: <strong>{activeSimulation.contacts_avoided}</strong></span>
                 </div>

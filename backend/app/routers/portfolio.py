@@ -242,8 +242,9 @@ async def run_recovery_auction(req: RunAuctionRequest):
     )
 
 
+@router.get("/auction-counterfactual")
 @router.get("/auction/counterfactual/{customer_id}")
-async def get_counterfactual_opportunity_cost(customer_id: str):
+async def get_counterfactual_opportunity_cost(customer_id: str = "CUST-9821"):
     try:
         return recovery_auction_engine.get_counterfactual_breakdown(customer_id)
     except Exception as e:
