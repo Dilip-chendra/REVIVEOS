@@ -147,10 +147,10 @@ class CredentialStore:
         key = f"{merchant_id}:{provider}"
         record = self._store.get(key)
         
-        # Fallback to system config ONLY for default merchant if no record is registered
-        if record is None and merchant_id == "default" and provider == "razorpay" and settings.razorpay_configured:
+        # Fallback to system config if no merchant-specific record is registered
+        if record is None and provider == "razorpay" and settings.razorpay_configured:
             return {
-                "connection_id": "conn_system_default",
+                "connection_id": f"conn_system_{merchant_id[:8]}",
                 "merchant_id": merchant_id,
                 "provider": "razorpay",
                 "environment": settings.detected_razorpay_environment,
