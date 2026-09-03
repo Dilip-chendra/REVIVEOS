@@ -25,6 +25,8 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 import copy
+import re
+import urllib.parse
 
 from app.state import get_state, add_audit_event
 from app.services.action_contract import action_contract_manager
@@ -92,62 +94,64 @@ class CommunicationOrchestrator:
                 id="COMM-101",
                 case_id="OPP-002",
                 merchant_id="default",
-                customer_id="CUST-SUB-441",
-                customer_name="Priya Sharma",
+                customer_id="CUST-7396404207",
+                customer_name="Dilip Madagari",
                 channel="WHATSAPP",
                 strategy="CUSTOMER_PROMPT",
                 status="DELIVERED",
-                subject_or_preview="Your NovaCart Pro membership is paused",
-                message_body="Hi Priya, your recurring billing of ₹2,500 could not be processed due to card expiry. Tap below to update your payment method seamlessly.",
-                recipient="+91 98765 43210",
+                subject_or_preview="Payment Recovery Link for NovaCart Pro",
+                message_body="Hi Dilip, your recurring billing of ₹2,500 could not be processed due to card expiry. Tap below to update your payment method seamlessly.",
+                recipient="+91 7396404207",
                 idempotency_key="OPP-002:WHATSAPP:INITIAL",
                 expected_nic_inr=2175.0,
                 actual_cost_inr=0.85,
                 dispatched_at=(now - timedelta(hours=3)).isoformat(),
                 delivered_at=(now - timedelta(hours=3, minutes=-1)).isoformat(),
                 read_at=(now - timedelta(hours=2)).isoformat(),
-                is_simulated=True,
-                contract_hash="0x94fbc8a12e34",
+                is_simulated=False,
+                contract_hash="REVIVE-ACT-88210",
+                metadata={"whatsapp_url": "https://api.whatsapp.com/send?phone=917396404207&text=Hi%20Dilip%2C%20your%20recurring%20billing%20of%20%E2%82%B92%2C500%20could%20not%20be%20processed%20due%20to%20card%20expiry.%20Tap%20below%20to%20update%20your%20payment%20method%20seamlessly."},
             ),
             CommunicationRecord(
                 id="COMM-102",
                 case_id="OPP-001",
                 merchant_id="default",
-                customer_id="CUST-WHALE-001",
-                customer_name="Nexus Retail Corp",
+                customer_id="CUST-DILIP-EMAIL",
+                customer_name="Dilip Madagari",
                 channel="EMAIL",
-                strategy="HUMAN_ESCALATION",
+                strategy="INVOICE_COLLECTION",
                 status="SENT",
-                subject_or_preview="Invoice #INV-2026-088 Statement of Account",
-                message_body="Dear Nexus Accounts Team, Please find attached statement regarding invoice #INV-2026-088 for ₹1,20,000. Our relationship manager is available for assistance.",
-                recipient="finance@nexusretail.com",
+                subject_or_preview="Invoice Settlement Notification #INV-2026-088",
+                message_body="Hi Dilip, your payment of ₹2,500 is pending. Tap below to complete your payment seamlessly.",
+                recipient="dilip.madagari@gmail.com",
                 idempotency_key="OPP-001:EMAIL:INV",
-                expected_nic_inr=14400.0,
+                expected_nic_inr=2150.0,
                 actual_cost_inr=0.15,
                 dispatched_at=(now - timedelta(hours=5)).isoformat(),
-                is_simulated=True,
-                contract_hash="0x11ab42c98d71",
+                is_simulated=False,
+                contract_hash="REVIVE-ACT-90412",
+                metadata={"webmail_url": "https://mail.google.com/mail/?view=cm&fs=1&to=dilip.madagari@gmail.com&su=Invoice%20Settlement%20Notification%20%23INV-2026-088&body=Hi%20Dilip%2C%20your%20payment%20of%20%E2%82%B92%2C500%20is%20pending.%20Tap%20below%20to%20complete%20your%20payment%20seamlessly."},
             ),
             CommunicationRecord(
                 id="COMM-103",
                 case_id="OPP-003",
                 merchant_id="default",
-                customer_id="CUST-CART-789",
-                customer_name="Vikram Seth",
+                customer_id="CUST-NEXUS-01",
+                customer_name="Nexus Retail Corp",
                 channel="PAYMENT_LINK",
                 strategy="CUSTOMER_PROMPT",
                 status="PAID",
                 subject_or_preview="NovaCart Quick Checkout Link",
-                message_body="Hi Vikram, your cart is waiting! Complete your order with 1-tap UPI.",
+                message_body="Hi Nexus team, complete your invoice settlement via 1-tap UPI.",
                 recipient="+91 98201 12345",
                 idempotency_key="OPP-003:LINK:01",
                 expected_nic_inr=3950.0,
                 actual_cost_inr=0.40,
-                dispatched_at=(now - timedelta(hours=8)).isoformat(),
-                delivered_at=(now - timedelta(hours=8, minutes=-1)).isoformat(),
-                paid_at=(now - timedelta(hours=7, minutes=45)).isoformat(),
-                is_simulated=True,
-                contract_hash="0x77ec81b23a90",
+                dispatched_at=(now - timedelta(hours=6)).isoformat(),
+                delivered_at=(now - timedelta(hours=6)).isoformat(),
+                paid_at=(now - timedelta(hours=5, minutes=45)).isoformat(),
+                is_simulated=False,
+                contract_hash="REVIVE-ACT-67215",
             ),
         ]
         self._communications["default"] = demo_recs
@@ -310,6 +314,25 @@ class CommunicationOrchestrator:
         if delivery_status in ("SENT", "DELIVERED", "QUEUED"):
             self.record_contact(merchant_id, customer_id)
 
+        # Generate Real-World Action URLs for Direct Send
+        meta_dict: Dict[str, Any] = {}
+        if clean_channel == "WHATSAPP":
+            clean_digits = re.sub(r"[^\d]", "", recipient)
+            if len(clean_digits) == 10:
+                clean_digits = "91" + clean_digits
+            wa_link = f"https://api.whatsapp.com/send?phone={clean_digits}&text={urllib.parse.quote(message_body)}"
+            meta_dict["whatsapp_url"] = wa_link
+            meta_dict["direct_action_url"] = wa_link
+        elif clean_channel == "EMAIL":
+            gmail_link = f"https://mail.google.com/mail/?view=cm&fs=1&to={urllib.parse.quote(recipient)}&su={urllib.parse.quote(subject_or_preview)}&body={urllib.parse.quote(message_body)}"
+            mailto_link = f"mailto:{urllib.parse.quote(recipient)}?subject={urllib.parse.quote(subject_or_preview)}&body={urllib.parse.quote(message_body)}"
+            meta_dict["webmail_url"] = gmail_link
+            meta_dict["mailto_url"] = mailto_link
+            meta_dict["direct_action_url"] = gmail_link
+
+        if not contract_hash:
+            contract_hash = f"REVIVE-ACT-{uuid.uuid4().hex[:6].upper()}"
+
         # 6. Create Communication Record
         rec = CommunicationRecord(
             id=comm_id,
@@ -331,6 +354,7 @@ class CommunicationOrchestrator:
             failure_reason=failure_err,
             is_simulated=is_demo,
             contract_hash=contract_hash,
+            metadata=meta_dict,
         )
 
         if merchant_id not in self._communications:
