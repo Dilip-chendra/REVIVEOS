@@ -328,14 +328,22 @@ def _compute_event_hash(previous_hash: str, event_id: str, timestamp: str, event
 
 
 def add_audit_event(
-    merchant_id: str,
-    event_type: str,
-    actor: str,
-    correlation_id: str,
-    event_data: dict,
+    merchant_id: str = "default",
+    event_type: str = "EVENT",
+    actor: str = "SYSTEM",
+    correlation_id: str | None = None,
+    event_data: dict | None = None,
     case_id: str | None = None,
     amount_inr: float | None = None,
+    details: dict | None = None,
+    **kwargs,
 ) -> dict:
+    if details is not None and event_data is None:
+        event_data = details
+    elif event_data is None:
+        event_data = {}
+    if correlation_id is None:
+        correlation_id = str(uuid.uuid4())
     state = get_state(merchant_id)
     events = state.setdefault("audit_events", [])
     

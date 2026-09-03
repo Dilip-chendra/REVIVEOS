@@ -51,6 +51,9 @@ const ToctouSimulator     = lazyRetry(() => import("./pages/ToctouSimulator").th
 const RecoveryArena       = lazyRetry(() => import("./pages/RecoveryArena").then(m => ({ default: m.RecoveryArena })));
 const OpportunityQueue    = lazyRetry(() => import("./pages/OpportunityQueue"));
 const RecoveryExperimentLab = lazyRetry(() => import("./pages/RecoveryExperimentLab"));
+const AutonomyCenter      = lazyRetry(() => import("./pages/AutonomyCenter"));
+const CommunicationQueue  = lazyRetry(() => import("./pages/CommunicationQueue"));
+const PayoutControlCenter = lazyRetry(() => import("./pages/PayoutControlCenter"));
 
 
 function PageLoader() {
@@ -510,6 +513,9 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                   <Route path="/"                      element={<Dashboard />} />
                   <Route path="/recovery-experiments"  element={<RecoveryExperimentLab />} />
                   <Route path="/opportunities"         element={<OpportunityQueue />} />
+                  <Route path="/communications"        element={<CommunicationQueue />} />
+                  <Route path="/automation"            element={<AutonomyCenter />} />
+                  <Route path="/payouts"               element={<PayoutControlCenter />} />
                   <Route path="/collision-lab"         element={<CollisionLab />} />
                   <Route path="/toctou"                element={<ToctouSimulator />} />
                   <Route path="/recovery-arena"        element={<RecoveryArena />} />

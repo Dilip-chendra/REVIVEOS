@@ -4,7 +4,7 @@ import {
   LayoutDashboard, AlertTriangle, GitCompare, HelpCircle, Activity, Bot,
   Shield, ShieldCheck, Network, ShieldAlert, TrendingUp, FlaskConical,
   Calculator, History, Briefcase, Scale, Zap, Code2, ChevronRight,
-  Sparkles, Terminal, FileText, Users, Brain
+  Sparkles, Terminal, FileText, Users, Brain, MessageSquare, Clock, CreditCard
 } from 'lucide-react';
 
 export interface SubNavItem {
@@ -28,6 +28,8 @@ export const NAVIGATION_CATEGORIES: NavCategory[] = [
     items: [
       { to: '/', label: 'Recovery Capital Desk', icon: LayoutDashboard },
       { to: '/opportunities', label: 'Recovery Opportunity Queue', icon: Zap },
+      { to: '/communications', label: 'Omnichannel Communications', icon: MessageSquare },
+      { to: '/automation', label: 'Autonomy Control Center', icon: Clock },
       { to: '/risk', label: 'Opportunity Portfolio', icon: AlertTriangle },
       { to: '/customers', label: 'Customer Intelligence', icon: Users },
     ],
@@ -67,6 +69,7 @@ export const NAVIGATION_CATEGORIES: NavCategory[] = [
       { to: '/impact', label: 'Incremental Recovery Yield', icon: TrendingUp },
       { to: '/experiments', label: 'Holdout A/B Experiments', icon: FlaskConical },
       { to: '/calculator', label: 'ROI & Pricing Model', icon: Calculator },
+      { to: '/payouts', label: 'Governed Payouts', icon: CreditCard },
       { to: '/evaluation', label: 'Attribution & Regret Engine', icon: FlaskConical },
     ],
   },
