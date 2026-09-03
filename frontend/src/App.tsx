@@ -285,25 +285,71 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
             {/* Provider Connection Indicator / Trigger */}
             <button
               type="button"
+              className="razorpay-topbar-btn"
               onClick={() => setShowRazorpayModal(true)}
-              title={isConnected ? `Active Key: ${razorpayStatus?.credentials?.key_id_masked}` : "Connect your Razorpay account"}
+              title={isConnected ? `Connected: ${razorpayStatus?.credentials?.key_id_masked || "Active"} • Click to configure` : "Connect your Razorpay account"}
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-                padding: "5px 10px",
-                borderRadius: "8px",
-                background: isConnected ? "rgba(16, 185, 129, 0.08)" : "rgba(59, 130, 246, 0.08)",
-                border: `1px solid ${isConnected ? "rgba(16, 185, 129, 0.25)" : "rgba(59, 130, 246, 0.25)"}`,
-                color: isConnected ? "#10B981" : "#60A5FA",
-                fontSize: "0.75rem",
-                fontWeight: 700,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
+                background: isConnected
+                  ? "linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.05) 100%)"
+                  : "linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(37, 99, 235, 0.05) 100%)",
+                border: `1px solid ${isConnected ? "rgba(16, 185, 129, 0.35)" : "rgba(59, 130, 246, 0.35)"}`,
+                boxShadow: isConnected ? "0 0 12px rgba(16, 185, 129, 0.18)" : "none",
               }}
             >
-              <Zap size={12} />
-              <span>{isConnected ? (razorpayStatus?.credentials?.key_id_masked || "Connected") : "Connect Razorpay"}</span>
+              {/* Pulsing Status Dot */}
+              <span style={{ position: "relative", display: "flex", width: 7, height: 7 }}>
+                {isConnected && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      width: "100%",
+                      height: "100%",
+                      borderRadius: "50%",
+                      backgroundColor: "#10B981",
+                      opacity: 0.75,
+                      animation: "ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite",
+                    }}
+                  />
+                )}
+                <span
+                  style={{
+                    position: "relative",
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    backgroundColor: isConnected ? "#10B981" : "#60A5FA",
+                  }}
+                />
+              </span>
+
+              {/* Razorpay Brand Icon */}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M14.5 2L5 13H12L9.5 22L19 11H12L14.5 2Z" fill={isConnected ? "#10B981" : "#60A5FA"} />
+              </svg>
+
+              <span style={{
+                fontWeight: 700,
+                fontSize: "0.74rem",
+                color: isConnected ? "#34D399" : "#93C5FD",
+                letterSpacing: "0.01em",
+              }}>
+                {isConnected ? "Razorpay Connected" : "Connect Razorpay"}
+              </span>
+
+              {isConnected && (
+                <span style={{
+                  fontSize: "0.62rem",
+                  padding: "1px 6px",
+                  borderRadius: "4px",
+                  background: "rgba(16, 185, 129, 0.2)",
+                  color: "#6EE7B7",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                }}>
+                  {razorpayStatus?.credentials?.environment === "live" ? "LIVE" : "TEST"}
+                </span>
+              )}
             </button>
 
             {/* Raw Provider Data Inspector */}
