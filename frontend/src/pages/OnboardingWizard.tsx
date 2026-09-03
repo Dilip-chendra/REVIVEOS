@@ -173,7 +173,9 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
       setStep("done");
       setTimeout(onComplete, 1600);
     } catch (e: any) {
-      setError("Failed to initialize workspace. Please try again.");
+      console.error("Onboarding error:", e);
+      const msg = e?.response?.data?.detail || e?.message || "Failed to initialize workspace. Please try again.";
+      setError(typeof msg === "string" ? msg : JSON.stringify(msg));
       setStep(3);
     }
   };

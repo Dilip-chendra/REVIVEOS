@@ -105,7 +105,17 @@ async def complete_onboarding(
     )
     merchant: Merchant | None = result.scalars().first()
     if not merchant:
-        raise HTTPException(status_code=404, detail="Merchant not found")
+        merchant = Merchant(
+            id=current_user.merchant_id,
+            name=body.business_name.strip() or "My Business",
+            email=current_user.email or "",
+            business_type=BusinessType(btype),
+            business_size=body.business_size,
+            payment_platform=body.payment_platform,
+            onboarding_complete=True,
+        )
+        db.add(merchant)
+        await db.flush()
 
     if merchant.onboarding_complete:
         # Idempotent — already done
@@ -149,7 +159,7 @@ async def complete_onboarding(
         "status": "complete",
         "merchant_id": mid,
         "merchant_name": merchant.name,
-        "cases_seeded": len(state["cases"]),
+        "cases_seeded": len(state.get("cases", [])),
     }
 
 
@@ -164,7 +174,8 @@ def _seed_demo_for_merchant(merchant_id: str, state: dict) -> None:
     cases = []
 
     # 1. Pre-built demo scenarios (vivid, human-friendly cases)
-    for d in DEMO_SCENARIOS:
+    scenarios_list = list(DEMO_SCENARIOS.values()) if isinstance(DEMO_SCENARIOS, dict) else list(DEMO_SCENARIOS)
+    for d in scenarios_list:
         case = {
             **d,
             "merchant_id": merchant_id,
@@ -181,8 +192,14 @@ def _seed_demo_for_merchant(merchant_id: str, state: dict) -> None:
 
     # 2. Generate 500 synthetic cases for a realistic dashboard
     try:
-        generator = DataGenerator(scale=500, seed=int(merchant_id[:8], 16) % 9999)
-        records = generator.generate()
+        clean_seed = merchant_id.replace("-", "")[:8]
+        seed_val = int(clean_seed, 16) % 9999
+    except Exception:
+        seed_val = 42
+    try:
+        generator = DataGenerator(scale=500, seed=seed_val)
+        dataset = generator.generate()
+        records = dataset.all_records
         total_amount = 0
         recoverable_amount = 0
         attempts = 0
