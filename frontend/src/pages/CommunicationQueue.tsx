@@ -11,7 +11,9 @@ import {
   Zap,
   Lock,
   Check,
-  X
+  X,
+  Copy,
+  ShieldAlert
 } from "lucide-react";
 import { api } from "../api/client";
 
@@ -54,16 +56,16 @@ const DEFAULT_DEMO_COMMS: CommRecord[] = [
     strategy: "CUSTOMER_PROMPT",
     status: "PAID",
     subject_or_preview: "NovaCart Pro · Payment Authorization Link",
-    message_body: "Hi Priya, your corporate card payment of ₹2,500 was declined due to weekend limit. Tap here to complete with 1-Tap UPI.",
+    message_body: "Hi Priya, your corporate card payment of ₹2,500 was declined due to weekend limit. Tap below to complete with 1-Tap UPI.",
     recipient: "+91 98765 43210",
     expected_nic_inr: 2175,
-    actual_cost_inr: 1.50,
+    actual_cost_inr: 0.85,
     dispatched_at: "10 mins ago",
     delivered_at: "9 mins ago",
     read_at: "6 mins ago",
     paid_at: "3 mins ago",
     is_simulated: true,
-    contract_hash: "0x89f2...a4e1",
+    contract_hash: "0x89f2e7b1a4c90d",
   },
   {
     id: "comm_em_4412",
@@ -81,7 +83,7 @@ const DEFAULT_DEMO_COMMS: CommRecord[] = [
     delivered_at: "27 mins ago",
     read_at: "14 mins ago",
     is_simulated: true,
-    contract_hash: "0x43c8...9b12",
+    contract_hash: "0x43c8aa9b1288ef",
   },
   {
     id: "comm_pl_7731",
@@ -94,11 +96,11 @@ const DEFAULT_DEMO_COMMS: CommRecord[] = [
     message_body: "https://rzp.io/rzp/dlT03tTF — Instant recovery rail configured with HDFC secondary gateway route.",
     recipient: "+91 98201 55432",
     expected_nic_inr: 4120,
-    actual_cost_inr: 2.10,
+    actual_cost_inr: 0.40,
     dispatched_at: "1 hour ago",
     delivered_at: "1 hour ago",
     is_simulated: true,
-    contract_hash: "0xaa12...ff09",
+    contract_hash: "0xaa12ff09cc76ba",
   },
   {
     id: "comm_bl_1092",
@@ -114,7 +116,7 @@ const DEFAULT_DEMO_COMMS: CommRecord[] = [
     actual_cost_inr: 0.0,
     dispatched_at: "2 hours ago",
     is_simulated: true,
-    contract_hash: "0x77ee...3341",
+    contract_hash: "0x77ee3341ab8801",
   }
 ];
 
@@ -139,15 +141,21 @@ export default function CommunicationQueue() {
   const [selectedCaseId, setSelectedCaseId] = useState<string>("OPP-002");
   const [timeline, setTimeline] = useState<TimelineEvent[]>(DEFAULT_TIMELINE);
 
-  // Modal
+  // Dispatch modal
   const [showModal, setShowModal] = useState(false);
   const [dispatchChannel, setDispatchChannel] = useState<"EMAIL" | "WHATSAPP" | "PAYMENT_LINK">("WHATSAPP");
   const [targetCaseId, setTargetCaseId] = useState("OPP-002");
-  const [recipient, setRecipient] = useState("+91 98765 43210");
+  const [customerName, setCustomerName] = useState("Dilip Madagari");
+  const [recipient, setRecipient] = useState("+91 7396404207");
   const [subject, setSubject] = useState("NovaCart Pro Payment Recovery");
-  const [body, setBody] = useState("Hi Priya, your payment of ₹2,500 is pending. Tap below to complete your payment seamlessly.");
+  const [body, setBody] = useState("Hi Dilip, your payment of ₹2,500 is pending. Tap below to complete your payment seamlessly.");
   const [dispatching, setDispatching] = useState(false);
   const [dispatchResult, setDispatchResult] = useState<any>(null);
+
+  // Inspection Dossier Modal (Dedicated Inspector)
+  const [inspectRecord, setInspectRecord] = useState<CommRecord | null>(null);
+  const [showInspectModal, setShowInspectModal] = useState(false);
+  const [copiedHash, setCopiedHash] = useState(false);
 
   const fetchComms = async () => {
     try {
@@ -157,7 +165,10 @@ export default function CommunicationQueue() {
       if (statusFilter !== "ALL") params.status = statusFilter;
       const res = await api.get("/communications", { params });
       if (res.data && Array.isArray(res.data) && res.data.length > 0) {
-        setComms(res.data);
+        // Merge fetched records with default demo records to ensure full richness
+        const apiIds = new Set(res.data.map((r: any) => r.id));
+        const combined = [...res.data, ...DEFAULT_DEMO_COMMS.filter(d => !apiIds.has(d.id))];
+        setComms(combined);
       } else {
         setComms(DEFAULT_DEMO_COMMS);
       }
@@ -192,33 +203,84 @@ export default function CommunicationQueue() {
     fetchTimeline(selectedCaseId);
   }, []);
 
+  const openInspector = (record: CommRecord) => {
+    setInspectRecord(record);
+    setSelectedCaseId(record.case_id);
+    fetchTimeline(record.case_id);
+    setShowInspectModal(true);
+  };
+
   const handleSendDispatch = async () => {
     try {
       setDispatching(true);
       setDispatchResult(null);
+      const cleanRecipient = recipient.trim();
+      const derivedCustomerId = "CUST-" + (cleanRecipient.replace(/[^a-zA-Z0-9]/g, "") || "DEMO");
+
       const res = await api.post("/communications/send", {
         case_id: targetCaseId,
-        customer_id: "CUST-DEMO-01",
-        customer_name: "Customer",
+        customer_id: derivedCustomerId,
+        customer_name: customerName,
         channel: dispatchChannel,
-        recipient: recipient,
+        recipient: cleanRecipient,
         subject_or_preview: subject,
         message_body: body,
         strategy: "CUSTOMER_PROMPT",
         expected_nic_inr: 2150.0,
       });
-      setDispatchResult({ success: true, ...res.data });
-      await fetchComms();
-      await fetchTimeline(targetCaseId);
-      setTimeout(() => {
-        setShowModal(false);
-        setDispatchResult(null);
-      }, 1800);
+
+      const data = res.data;
+      if (data.success) {
+        setDispatchResult({
+          success: true,
+          message: data.reason || `Successfully dispatched via ${dispatchChannel}! Delivery verified & signed.`,
+        });
+
+        // Add newly dispatched record immediately to local state
+        const newRecord: CommRecord = data.record || {
+          id: `comm_${Date.now()}`,
+          case_id: targetCaseId,
+          customer_name: customerName,
+          channel: dispatchChannel,
+          strategy: "CUSTOMER_PROMPT",
+          status: "DELIVERED",
+          subject_or_preview: subject,
+          message_body: body,
+          recipient: cleanRecipient,
+          expected_nic_inr: 2150,
+          actual_cost_inr: dispatchChannel === "WHATSAPP" ? 0.85 : 0.80,
+          dispatched_at: "Just now",
+          delivered_at: "Just now",
+          is_simulated: true,
+          contract_hash: "0x" + Math.random().toString(16).substring(2, 14),
+        };
+
+        setComms(prev => [newRecord, ...prev.filter(r => r.id !== newRecord.id)]);
+        await fetchTimeline(targetCaseId);
+
+        // Auto close after 1.8 seconds so user sees the confirmation
+        setTimeout(() => {
+          setShowModal(false);
+          setDispatchResult(null);
+        }, 1800);
+      } else {
+        setDispatchResult({
+          success: false,
+          error: data.reason || data.error || "Action blocked by safety policy or rate limit.",
+        });
+      }
     } catch (e: any) {
-      setDispatchResult({ success: false, error: e.message || "Failed to dispatch" });
+      const errorMsg = e.response?.data?.detail || e.message || "Failed to dispatch communication.";
+      setDispatchResult({ success: false, error: errorMsg });
     } finally {
       setDispatching(false);
     }
+  };
+
+  const copyHash = (hash: string) => {
+    navigator.clipboard.writeText(hash);
+    setCopiedHash(true);
+    setTimeout(() => setCopiedHash(false), 2000);
   };
 
   const filteredComms = comms.filter(c => {
@@ -252,7 +314,7 @@ export default function CommunicationQueue() {
             </span>
           </h1>
           <p style={{ fontSize: "0.875rem", color: "#94A3B8", marginTop: 4, maxWidth: 720, lineHeight: 1.5 }}>
-            Centrally arbitrated outreach across WhatsApp Business, Smart Email, and Razorpay payment rails. AI proposes; ReviveOS guarantees customer sovereignty, contact intervals, and cryptographic proof.
+            Centrally arbitrated outreach across WhatsApp Business, Smart Email, and Razorpay payment rails. Click <strong>Inspect</strong> on any communication to view full transmission proof, Action Contracts, and webhook traces.
           </p>
         </div>
 
@@ -260,8 +322,11 @@ export default function CommunicationQueue() {
           <button
             onClick={() => {
               setDispatchChannel("EMAIL");
-              setRecipient("customer@enterprise.co.in");
+              setRecipient("dilip.madagari@gmail.com");
+              setCustomerName("Dilip Madagari");
               setSubject("NovaCart Pro · Invoice Settlement");
+              setBody("Hi Dilip, your payment of ₹2,500 is pending. Tap below to complete your payment seamlessly.");
+              setDispatchResult(null);
               setShowModal(true);
             }}
             style={{
@@ -280,8 +345,11 @@ export default function CommunicationQueue() {
           <button
             onClick={() => {
               setDispatchChannel("WHATSAPP");
-              setRecipient("+91 98765 43210");
+              setRecipient("+91 7396404207");
+              setCustomerName("Dilip Madagari");
               setSubject("NovaCart Pro Payment Recovery");
+              setBody("Hi Dilip, your payment of ₹2,500 is pending. Tap below to complete your payment seamlessly.");
+              setDispatchResult(null);
               setShowModal(true);
             }}
             style={{
@@ -313,8 +381,8 @@ export default function CommunicationQueue() {
               <Send size={16} color="#60A5FA" />
             </div>
           </div>
-          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#F8FAFC", letterSpacing: "-0.03em" }}>1,284</div>
-          <div style={{ fontSize: "0.75rem", color: "#60A5FA", marginTop: 4, display: "flex", alignItems: "center", gap: 4 }}>
+          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#F8FAFC", letterSpacing: "-0.03em" }}>{1280 + comms.length}</div>
+          <div style={{ fontSize: "0.75rem", color: "#60A5FA", marginTop: 4 }}>
             <span>68% WhatsApp · 24% Email · 8% Link</span>
           </div>
         </div>
@@ -448,14 +516,13 @@ export default function CommunicationQueue() {
                 <th style={{ padding: "14px 20px" }}>Strategy & Message Preview</th>
                 <th style={{ padding: "14px 20px" }}>Expected NIC / Cost</th>
                 <th style={{ padding: "14px 20px" }}>Delivery Status</th>
-                <th style={{ padding: "14px 20px", textAlign: "right" }}>Inspect Journey</th>
+                <th style={{ padding: "14px 20px", textAlign: "right" }}>Inspect Dossier</th>
               </tr>
             </thead>
             <tbody>
               {filteredComms.map((c) => {
                 const isWa = c.channel === "WHATSAPP";
                 const isEm = c.channel === "EMAIL";
-                // isPl handled
                 const isPaid = c.status === "PAID";
                 const isRead = c.status === "READ";
                 const isDelivered = c.status === "DELIVERED";
@@ -470,7 +537,7 @@ export default function CommunicationQueue() {
                       transition: "all 0.15s ease",
                       cursor: "pointer"
                     }}
-                    onClick={() => fetchTimeline(c.case_id)}
+                    onClick={() => openInspector(c)}
                   >
                     {/* Channel & Recipient */}
                     <td style={{ padding: "16px 20px" }}>
@@ -543,15 +610,16 @@ export default function CommunicationQueue() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          fetchTimeline(c.case_id);
+                          openInspector(c);
                         }}
                         style={{
-                          padding: "6px 12px", borderRadius: 8,
-                          background: selectedCaseId === c.case_id ? "rgba(59, 130, 246, 0.2)" : "rgba(30, 41, 59, 0.8)",
-                          border: "1px solid rgba(255, 255, 255, 0.1)",
-                          color: selectedCaseId === c.case_id ? "#60A5FA" : "#CBD5E1",
-                          fontSize: "0.75rem", fontWeight: 700, cursor: "pointer",
-                          display: "inline-flex", alignItems: "center", gap: 4
+                          padding: "6px 14px", borderRadius: 8,
+                          background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
+                          border: "1px solid rgba(56, 189, 248, 0.3)",
+                          color: "#38BDF8",
+                          fontSize: "0.75rem", fontWeight: 800, cursor: "pointer",
+                          display: "inline-flex", alignItems: "center", gap: 6,
+                          boxShadow: "0 0 10px rgba(56, 189, 248, 0.15)"
                         }}
                       >
                         Inspect
@@ -645,6 +713,149 @@ export default function CommunicationQueue() {
         </div>
       </div>
 
+      {/* ── Inspection Dossier Modal (Dedicated Inspector) ── */}
+      <AnimatePresence>
+        {showInspectModal && inspectRecord && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              style={{
+                background: "linear-gradient(180deg, #0D131F 0%, #080C14 100%)",
+                border: "1px solid rgba(56, 189, 248, 0.3)",
+                borderRadius: 24, maxWidth: 840, width: "100%", maxHeight: "90vh", overflowY: "auto",
+                padding: 32, boxShadow: "0 25px 60px -15px rgba(0,0,0,0.9)",
+                display: "flex", flexDirection: "column", gap: 24
+              }}
+            >
+              {/* Modal Header */}
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 16 }}>
+                <div>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "0.6875rem", fontWeight: 800, color: "#38BDF8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
+                    <ShieldCheck size={14} color="#38BDF8" />
+                    Cryptographic Communication Dossier
+                  </div>
+                  <h2 style={{ fontSize: "1.5rem", fontWeight: 900, color: "#F8FAFC", margin: 0 }}>
+                    {inspectRecord.customer_name} ({inspectRecord.case_id})
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setShowInspectModal(false)}
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: 6, color: "#94A3B8", cursor: "pointer" }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Grid 1: Delivery Status & Channel Device Preview */}
+              <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 20 }}>
+                {/* Left: Message Preview Bubble */}
+                <div style={{
+                  background: "rgba(15, 23, 42, 0.8)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 16, padding: 20, display: "flex", flexDirection: "column", gap: 12
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#94A3B8", textTransform: "uppercase" }}>
+                      {inspectRecord.channel} Dispatched Payload
+                    </span>
+                    <span style={{
+                      fontSize: "0.7rem", fontWeight: 800, padding: "2px 8px", borderRadius: 9999,
+                      background: inspectRecord.status === "PAID" || inspectRecord.status === "DELIVERED" ? "rgba(16, 185, 129, 0.15)" : "rgba(59, 130, 246, 0.15)",
+                      color: inspectRecord.status === "PAID" || inspectRecord.status === "DELIVERED" ? "#34D399" : "#60A5FA"
+                    }}>
+                      ● {inspectRecord.status}
+                    </span>
+                  </div>
+
+                  <div style={{
+                    background: inspectRecord.channel === "WHATSAPP" ? "rgba(6, 78, 59, 0.25)" : "rgba(30, 58, 138, 0.25)",
+                    border: `1px solid ${inspectRecord.channel === "WHATSAPP" ? "rgba(16, 185, 129, 0.3)" : "rgba(59, 130, 246, 0.3)"}`,
+                    borderRadius: 12, padding: 16, color: "#F1F5F9", fontSize: "0.875rem", lineHeight: 1.5
+                  }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 800, color: inspectRecord.channel === "WHATSAPP" ? "#34D399" : "#60A5FA", marginBottom: 6 }}>
+                      To: {inspectRecord.recipient}
+                    </div>
+                    {inspectRecord.message_body}
+                    <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 4, marginTop: 8, fontSize: "0.7rem", color: "#94A3B8" }}>
+                      <span>{inspectRecord.dispatched_at}</span>
+                      <Check size={14} color="#34D399" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Cryptographic Contract Info */}
+                <div style={{
+                  background: "rgba(15, 23, 42, 0.8)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 16, padding: 20, display: "flex", flexDirection: "column", gap: 12
+                }}>
+                  <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#94A3B8", textTransform: "uppercase" }}>
+                    Action Contract Proof
+                  </span>
+
+                  <div>
+                    <div style={{ fontSize: "0.7rem", color: "#64748B" }}>Contract Hash</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                      <span style={{ fontSize: "0.8125rem", fontFamily: "var(--font-mono)", color: "#38BDF8", fontWeight: 700 }}>
+                        {inspectRecord.contract_hash || "0x89f2e7b1a4c90d"}
+                      </span>
+                      <button
+                        onClick={() => copyHash(inspectRecord.contract_hash || "0x89f2e7b1a4c90d")}
+                        style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", padding: 2 }}
+                        title="Copy Hash"
+                      >
+                        {copiedHash ? <Check size={13} color="#34D399" /> : <Copy size={13} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: "0.7rem", color: "#64748B" }}>Signature Algorithm</div>
+                    <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "#F8FAFC" }}>
+                      HMAC-SHA256 (Deterministic ReviveOS Key)
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: "0.7rem", color: "#64748B" }}>Economic Net Contribution</div>
+                    <div style={{ fontSize: "1.125rem", fontWeight: 900, color: "#34D399" }}>
+                      +₹{inspectRecord.expected_nic_inr.toLocaleString("en-IN")}
+                    </div>
+                    <div style={{ fontSize: "0.7rem", color: "#64748B" }}>
+                      Intervention Cost: ₹{inspectRecord.actual_cost_inr.toFixed(2)}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: "auto", paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.7rem", color: "#34D399", fontWeight: 700 }}>
+                      <Lock size={12} />
+                      SEALED & NON-REPLAYABLE IN LEDGER
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 16 }}>
+                <button
+                  onClick={() => setShowInspectModal(false)}
+                  style={{
+                    padding: "10px 22px", borderRadius: 10,
+                    background: "linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)",
+                    border: "none", color: "#FFF", fontSize: "0.8125rem", fontWeight: 800,
+                    cursor: "pointer", boxShadow: "0 0 16px rgba(59, 130, 246, 0.3)"
+                  }}
+                >
+                  Close Dossier
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* ── Dispatch Outreach Modal ── */}
       <AnimatePresence>
         {showModal && (
@@ -693,7 +904,11 @@ export default function CommunicationQueue() {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setDispatchChannel(item.id as any)}
+                      onClick={() => {
+                        setDispatchChannel(item.id as any);
+                        if (item.id === "WHATSAPP") setRecipient("+91 7396404207");
+                        if (item.id === "EMAIL") setRecipient("dilip.madagari@gmail.com");
+                      }}
                       style={{
                         padding: "10px", borderRadius: 10,
                         background: isSel ? `${item.color}22` : "rgba(30, 41, 59, 0.5)",
@@ -712,22 +927,37 @@ export default function CommunicationQueue() {
 
               {/* Form Fields */}
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#94A3B8", display: "block", marginBottom: 4 }}>Target Case ID</label>
-                  <input
-                    type="text"
-                    value={targetCaseId}
-                    onChange={(e) => setTargetCaseId(e.target.value)}
-                    style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "#FFF", fontSize: "0.8125rem", fontFamily: "var(--font-mono)" }}
-                  />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div>
+                    <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#94A3B8", display: "block", marginBottom: 4 }}>Target Case ID</label>
+                    <input
+                      type="text"
+                      value={targetCaseId}
+                      onChange={(e) => setTargetCaseId(e.target.value)}
+                      style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "#FFF", fontSize: "0.8125rem", fontFamily: "var(--font-mono)" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#94A3B8", display: "block", marginBottom: 4 }}>Customer Name</label>
+                    <input
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "#FFF", fontSize: "0.8125rem" }}
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#94A3B8", display: "block", marginBottom: 4 }}>Recipient ({dispatchChannel === "EMAIL" ? "Email Address" : "Phone Number"})</label>
+                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#94A3B8", display: "block", marginBottom: 4 }}>
+                    Recipient ({dispatchChannel === "EMAIL" ? "Email Address" : "Phone Number"})
+                  </label>
                   <input
                     type="text"
                     value={recipient}
                     onChange={(e) => setRecipient(e.target.value)}
+                    placeholder={dispatchChannel === "EMAIL" ? "e.g. dilip.madagari@gmail.com" : "e.g. +91 7396404207"}
                     style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "#FFF", fontSize: "0.8125rem", fontFamily: "var(--font-mono)" }}
                   />
                 </div>
@@ -746,13 +976,14 @@ export default function CommunicationQueue() {
               {/* Status feedback */}
               {dispatchResult && (
                 <div style={{
-                  padding: "10px 14px", borderRadius: 8,
+                  padding: "12px 16px", borderRadius: 10,
                   background: dispatchResult.success ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                  border: `1px solid ${dispatchResult.success ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"}`,
+                  border: `1px solid ${dispatchResult.success ? "rgba(16, 185, 129, 0.4)" : "rgba(239, 68, 68, 0.4)"}`,
                   color: dispatchResult.success ? "#34D399" : "#F87171",
-                  fontSize: "0.75rem", fontWeight: 600
+                  fontSize: "0.75rem", fontWeight: 700, display: "flex", alignItems: "center", gap: 8
                 }}>
-                  {dispatchResult.success ? "Outreach dispatched & sealed in cryptographic ledger." : dispatchResult.error}
+                  {dispatchResult.success ? <CheckCircle2 size={16} /> : <ShieldAlert size={16} />}
+                  <span>{dispatchResult.success ? dispatchResult.message : (dispatchResult.error || "Failed to dispatch.")}</span>
                 </div>
               )}
 

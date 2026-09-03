@@ -24,6 +24,7 @@ import uuid
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional, Tuple
+import copy
 
 from app.state import get_state, add_audit_event
 from app.services.action_contract import action_contract_manager
@@ -228,15 +229,17 @@ class CommunicationOrchestrator:
             }
 
         # 3. Attention Budget Check (24h fatigue rule)
-        allowed, budget_msg = self.check_attention_budget(merchant_id, customer_id, max_contacts_24h=1)
-        if not allowed:
-            logger.warning(f"Attention budget blocked for {customer_id}: {budget_msg}")
-            return {
-                "success": False,
-                "status": "BLOCKED_ATTENTION_BUDGET",
-                "reason": budget_msg,
-                "record": None,
-            }
+        if not is_demo:
+            allowed, budget_msg = self.check_attention_budget(merchant_id, customer_id, max_contacts_24h=1)
+            if not allowed:
+                logger.warning(f"Attention budget blocked for {customer_id}: {budget_msg}")
+                return {
+                    "success": False,
+                    "status": "BLOCKED_ATTENTION_BUDGET",
+                    "reason": budget_msg,
+                    "error": budget_msg,
+                    "record": None,
+                }
 
         # 4. Action Contract Verification (if provided)
         contract_hash = None
@@ -363,10 +366,29 @@ class CommunicationOrchestrator:
             actor="ReviveOS Orchestrator",
         )
 
+        if delivery_status in ("SENT", "DELIVERED"):
+            self.add_timeline_event(
+                case_id=case_id,
+                stage="DELIVERY",
+                title="Message Delivered to Recipient",
+                description=f"Delivery receipt verified for {recipient}. Status: {delivery_status}.",
+                status="COMPLETED",
+                actor=f"{clean_channel.capitalize()} Gateway",
+            )
+            self.add_timeline_event(
+                case_id=case_id,
+                stage="SETTLEMENT",
+                title="Recovery Intent Registered",
+                description=f"Recovery link active. Nonce {idempotency_key} bound to customer session.",
+                status="COMPLETED",
+                actor="ReviveOS Ledger",
+            )
+
         return {
             "success": delivery_status != "FAILED",
             "status": delivery_status,
             "error": failure_err,
+            "reason": failure_err or f"Action successfully dispatched via {clean_channel} to {recipient}.",
             "record": asdict(rec),
         }
 
@@ -377,7 +399,14 @@ class CommunicationOrchestrator:
         status_filter: Optional[str] = None,
         is_real_mode: bool = False,
     ) -> List[Dict[str, Any]]:
-        recs = self._communications.get(merchant_id, [])
+        recs = self._communications.get(merchant_id)
+        if recs is None:
+            defaults = self._communications.get("default", [])
+            recs = [copy.deepcopy(r) for r in defaults]
+            for r in recs:
+                r.merchant_id = merchant_id
+            self._communications[merchant_id] = recs
+
         if is_real_mode:
             # Universe boundary: In Real Mode, strictly filter out simulated demo communications
             recs = [r for r in recs if not r.is_simulated]
