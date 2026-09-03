@@ -303,7 +303,7 @@ class FinancialActionGateway:
             candidate_amount_inr=authoritative_amount,
         )
 
-        if not gov_eval.is_autonomous_permitted and req.is_autonomous and req.actor != "USER":
+        if not gov_eval.is_autonomous_permitted and req.is_autonomous and req.actor not in ("USER", "OPERATOR"):
             record_safety_metric(mid, "policy_violations_prevented")
             case["is_human_required"] = True
             case["status"] = "escalated"
@@ -322,7 +322,7 @@ class FinancialActionGateway:
 
         # Record Daily Budget Usage atomically
         budget = safety_governor.get_budget(mid)
-        if not budget.record_usage(authoritative_amount) and req.is_autonomous and req.actor != "USER":
+        if not budget.record_usage(authoritative_amount) and req.is_autonomous and req.actor not in ("USER", "OPERATOR"):
             record_safety_metric(mid, "policy_violations_prevented")
             case["is_human_required"] = True
             case["status"] = "escalated"
@@ -360,7 +360,7 @@ class FinancialActionGateway:
         )
 
         policy_res = policy_engine.evaluate(ctx)
-        if not policy_res.allowed and req.actor != "USER":
+        if not policy_res.allowed and req.actor not in ("USER", "OPERATOR"):
             record_safety_metric(mid, "policy_violations_prevented")
             case["is_human_required"] = True
             case["status"] = "escalated"
@@ -399,11 +399,11 @@ class FinancialActionGateway:
             gateway_is_degraded=case.get("gateway_is_degraded", False),
             trust_score=case.get("trust_score", 85.0),
             policy_allowed=policy_res.allowed,
-            is_autonomous_action=req.is_autonomous and req.actor != "USER",
+            is_autonomous_action=req.is_autonomous and req.actor not in ("USER", "OPERATOR"),
             data_quality_pct=float(case.get("data_quality_pct", 95.0)),
         )
 
-        if not const_eval.is_compliant and req.actor != "USER":
+        if not const_eval.is_compliant and req.actor not in ("USER", "OPERATOR"):
             record_safety_metric(mid, "policy_violations_prevented")
             return FinancialGatewayResult(
                 status=GatewayExecutionStatus.BLOCKED,

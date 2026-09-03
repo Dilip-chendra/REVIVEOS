@@ -447,8 +447,8 @@ async def execute_recovery_case(
         merchant_id=mid,
         case_id=case_id,
         action_type=case.get("recommended_strategy", "retry"),
-        actor="RECOVERY_ENGINE",
-        is_autonomous=True,
+        actor="OPERATOR",
+        is_autonomous=False,
     )
     result = await financial_action_gateway.execute_action(req)
     return {
