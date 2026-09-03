@@ -71,7 +71,7 @@ export default function OpportunityQueue() {
   const [selectedUrgency, setSelectedUrgency] = useState<string>("ALL");
   const [selectedDecision, setSelectedDecision] = useState<string>("ALL");
   const [activeSimulation, setActiveSimulation] = useState<SimulationResult | null>(null);
-  const [simLoading, setSimLoading] = useState(false);
+  const [simulatingCaseId, setSimulatingCaseId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -103,14 +103,14 @@ export default function OpportunityQueue() {
   };
 
   const handleSimulate = async (oppId: string) => {
-    setSimLoading(true);
+    setSimulatingCaseId(oppId);
     try {
       const res = await api.get(`/opportunities/${oppId}/simulate-strategies`).then(r => r.data);
       setActiveSimulation(res);
     } catch (e) {
       console.error(e);
     } finally {
-      setSimLoading(false);
+      setSimulatingCaseId(null);
     }
   };
 
@@ -285,23 +285,34 @@ export default function OpportunityQueue() {
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <button
                 onClick={() => handleSimulate(opp.case_id)}
-                disabled={simLoading}
+                disabled={simulatingCaseId !== null}
                 style={{
-                  background: "#1E293B",
-                  border: "1px solid #3B82F6",
+                  background: simulatingCaseId === opp.case_id ? "rgba(59, 130, 246, 0.2)" : "#1E293B",
+                  border: `1px solid ${simulatingCaseId === opp.case_id ? "#60A5FA" : "#3B82F6"}`,
                   color: "#93C5FD",
-                  padding: "8px 12px",
+                  padding: "8px 14px",
                   borderRadius: 6,
                   fontSize: 12,
                   fontWeight: 600,
-                  cursor: "pointer",
+                  cursor: simulatingCaseId !== null ? "not-allowed" : "pointer",
+                  opacity: (simulatingCaseId !== null && simulatingCaseId !== opp.case_id) ? 0.6 : 1,
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
+                  transition: "all 0.15s ease",
                 }}
               >
-                {simLoading ? <Loader2 size={14} className="spin" /> : <Cpu size={14} />}
-                Simulate 7 Strategies
+                {simulatingCaseId === opp.case_id ? (
+                  <>
+                    <Loader2 size={14} className="spin" />
+                    <span>Simulating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Cpu size={14} />
+                    <span>Simulate 7 Strategies</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
