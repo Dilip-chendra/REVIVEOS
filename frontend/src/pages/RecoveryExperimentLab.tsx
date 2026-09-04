@@ -52,8 +52,8 @@ export default function RecoveryExperimentLab() {
   const [experiment, setExperiment] = useState<ExperimentMetrics | null>(null);
 
   // Copilot state
-  const [copilotCustomer, setCopilotCustomer] = useState('Nexus Retail Corp');
-  const [copilotAmount, setCopilotAmount] = useState(48500);
+  const [copilotCustomer, setCopilotCustomer] = useState(isDemoMode ? 'Nexus Retail Corp' : 'Valued Customer');
+  const [copilotAmount, setCopilotAmount] = useState(isDemoMode ? 48500 : 2499);
   const [copilotTone, setCopilotTone] = useState<'FRIENDLY' | 'PROFESSIONAL' | 'FIRM' | 'URGENT'>('PROFESSIONAL');
   const [copilotChannel, setCopilotChannel] = useState('WHATSAPP');
   const [copilotOptOut, setCopilotOptOut] = useState(false);
@@ -76,6 +76,8 @@ export default function RecoveryExperimentLab() {
       ]);
       if (expRes.data && expRes.data.length > 0) {
         setExperiment(expRes.data[0]);
+      } else {
+        setExperiment(null);
       }
       setPromises(p2pRes.data || []);
       setForecast(fcRes.data || null);
@@ -208,81 +210,117 @@ export default function RecoveryExperimentLab() {
         </button>
       </div>
 
-      {/* Executive Result Card */}
-      <div style={{
-        background: 'linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(30,41,59,0.7) 100%)',
-        borderRadius: 14,
-        border: '1px solid rgba(59,130,246,0.3)',
-        padding: '24px',
-        marginBottom: 28,
-        boxShadow: '0 12px 30px rgba(0,0,0,0.4)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Sparkles size={18} color="#60A5FA" />
-            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#F8FAFC' }}>
-              Executive Recovery Proof Card (Incremental Causality)
-            </h3>
-          </div>
-          <span style={{ fontSize: '0.75rem', color: '#64748B', fontFamily: 'monospace' }}>
-            ID: {experiment?.experiment_id || 'EXP-CHAMPION-01'}
-          </span>
+      {/* Executive Result Card or Real Mode Zero State */}
+      {!experiment && !isDemoMode ? (
+        <div style={{
+          background: '#0B1222',
+          borderRadius: 14,
+          border: '1px solid #1E293B',
+          padding: '36px 24px',
+          marginBottom: 28,
+          textAlign: 'center',
+        }}>
+          <FlaskConical size={36} color="#60A5FA" style={{ margin: '0 auto 12px', opacity: 0.7 }} />
+          <h3 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 700, color: '#F8FAFC' }}>
+            No Real Provider Holdout Experiments Run Yet
+          </h3>
+          <p style={{ fontSize: '0.85rem', color: '#94A3B8', maxWidth: 540, margin: '0 auto 16px', lineHeight: 1.5 }}>
+            Holdout A/B testing partitions transaction declines into a 30% control baseline (zero outreach) and 70% active treatment to mathematically prove causal recovery yield without natural churn attribution.
+          </p>
+          <button
+            onClick={handleRunNewExperiment}
+            disabled={running}
+            style={{
+              padding: '10px 22px',
+              borderRadius: 8,
+              background: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)',
+              color: '#FFF',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              border: 'none',
+              cursor: running ? 'wait' : 'pointer',
+              boxShadow: '0 4px 14px rgba(37,99,235,0.4)',
+            }}
+          >
+            {running ? 'Running Experiment...' : '⚡ Run Holdout Experiment on Live Rails'}
+          </button>
         </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 16 }}>
-          <div style={{ background: '#0B1222', padding: '14px 16px', borderRadius: 10, border: '1px solid #1E293B' }}>
-            <div style={{ fontSize: '0.72rem', color: '#94A3B8', textTransform: 'uppercase', fontWeight: 700 }}>Revenue at Risk</div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#F8FAFC', marginTop: 4 }}>
-              {formatINR(experiment?.revenue_at_risk_inr || 4260000)}
+      ) : (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(30,41,59,0.7) 100%)',
+          borderRadius: 14,
+          border: '1px solid rgba(59,130,246,0.3)',
+          padding: '24px',
+          marginBottom: 28,
+          boxShadow: '0 12px 30px rgba(0,0,0,0.4)',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Sparkles size={18} color="#60A5FA" />
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#F8FAFC' }}>
+                Executive Recovery Proof Card (Incremental Causality)
+              </h3>
             </div>
-            <div style={{ fontSize: '0.7rem', color: '#64748B', marginTop: 4 }}>500 Cases Evaluated</div>
+            <span style={{ fontSize: '0.75rem', color: '#64748B', fontFamily: 'monospace' }}>
+              ID: {experiment?.experiment_id || 'EXP-CHAMPION-01'}
+            </span>
           </div>
 
-          <div style={{ background: '#0B1222', padding: '14px 16px', borderRadius: 10, border: '1px solid #1E293B' }}>
-            <div style={{ fontSize: '0.72rem', color: '#94A3B8', textTransform: 'uppercase', fontWeight: 700 }}>Natural Recovery Baseline</div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#94A3B8', marginTop: 4 }}>
-              {formatINR(experiment?.natural_recovery_inr || 1180000)}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 16 }}>
+            <div style={{ background: '#0B1222', padding: '14px 16px', borderRadius: 10, border: '1px solid #1E293B' }}>
+              <div style={{ fontSize: '0.72rem', color: '#94A3B8', textTransform: 'uppercase', fontWeight: 700 }}>Revenue at Risk</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#F8FAFC', marginTop: 4 }}>
+                {formatINR(experiment?.revenue_at_risk_inr || (isDemoMode ? 4260000 : 0))}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#64748B', marginTop: 4 }}>{experiment?.batch_size || (isDemoMode ? 500 : 0)} Cases Evaluated</div>
             </div>
-            <div style={{ fontSize: '0.7rem', color: '#64748B', marginTop: 4 }}>Counterfactual (No Outreach)</div>
-          </div>
 
-          <div style={{ background: '#0B1222', padding: '14px 16px', borderRadius: 10, border: '1px solid #1E293B' }}>
-            <div style={{ fontSize: '0.72rem', color: '#60A5FA', textTransform: 'uppercase', fontWeight: 700 }}>ReviveOS Governed Recovery</div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#60A5FA', marginTop: 4 }}>
-              {formatINR(experiment?.reviveos_recovery_inr || 1570000)}
+            <div style={{ background: '#0B1222', padding: '14px 16px', borderRadius: 10, border: '1px solid #1E293B' }}>
+              <div style={{ fontSize: '0.72rem', color: '#94A3B8', textTransform: 'uppercase', fontWeight: 700 }}>Natural Recovery Baseline</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#94A3B8', marginTop: 4 }}>
+                {formatINR(experiment?.natural_recovery_inr || (isDemoMode ? 1180000 : 0))}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#64748B', marginTop: 4 }}>Counterfactual (No Outreach)</div>
             </div>
-            <div style={{ fontSize: '0.7rem', color: '#38BDF8', marginTop: 4 }}>Treatment Cohort Yield</div>
-          </div>
 
-          <div style={{ background: '#0B1222', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.3)' }}>
-            <div style={{ fontSize: '0.72rem', color: '#34D399', textTransform: 'uppercase', fontWeight: 700 }}>Incremental Revenue Lift</div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#34D399', marginTop: 4 }}>
-              +{formatINR(experiment?.incremental_recovery_inr || 390000)}
+            <div style={{ background: '#0B1222', padding: '14px 16px', borderRadius: 10, border: '1px solid #1E293B' }}>
+              <div style={{ fontSize: '0.72rem', color: '#60A5FA', textTransform: 'uppercase', fontWeight: 700 }}>ReviveOS Governed Recovery</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#60A5FA', marginTop: 4 }}>
+                {formatINR(experiment?.reviveos_recovery_inr || (isDemoMode ? 1570000 : 0))}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#38BDF8', marginTop: 4 }}>Treatment Cohort Yield</div>
             </div>
-            <div style={{ fontSize: '0.7rem', color: '#10B981', marginTop: 4 }}>
-              +{experiment?.recovery_lift_pct || 33.1}% Absolute Lift
-            </div>
-          </div>
 
-          <div style={{ background: '#0B1222', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(139,92,246,0.3)' }}>
-            <div style={{ fontSize: '0.72rem', color: '#A78BFA', textTransform: 'uppercase', fontWeight: 700 }}>Net Contribution (NIC)</div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#A78BFA', marginTop: 4 }}>
-              {formatINR(experiment?.net_incremental_contribution_inr || 331000)}
+            <div style={{ background: '#0B1222', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.3)' }}>
+              <div style={{ fontSize: '0.72rem', color: '#34D399', textTransform: 'uppercase', fontWeight: 700 }}>Incremental Revenue Lift</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#34D399', marginTop: 4 }}>
+                +{formatINR(experiment?.incremental_recovery_inr || (isDemoMode ? 390000 : 0))}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#10B981', marginTop: 4 }}>
+                +{experiment?.recovery_lift_pct || (isDemoMode ? 33.1 : 0)}% Absolute Lift
+              </div>
             </div>
-            <div style={{ fontSize: '0.7rem', color: '#C084FC', marginTop: 4 }}>After All Costs Deducted</div>
-          </div>
 
-          <div style={{ background: '#0B1222', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(234,179,8,0.3)' }}>
-            <div style={{ fontSize: '0.72rem', color: '#FACC15', textTransform: 'uppercase', fontWeight: 700 }}>Return on Spend (ROI)</div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#FACC15', marginTop: 4 }}>
-              {experiment?.roi_multiple || 9.2}x
+            <div style={{ background: '#0B1222', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(139,92,246,0.3)' }}>
+              <div style={{ fontSize: '0.72rem', color: '#A78BFA', textTransform: 'uppercase', fontWeight: 700 }}>Net Contribution (NIC)</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#A78BFA', marginTop: 4 }}>
+                {formatINR(experiment?.net_incremental_contribution_inr || (isDemoMode ? 331000 : 0))}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#C084FC', marginTop: 4 }}>After All Costs Deducted</div>
             </div>
-            <div style={{ fontSize: '0.7rem', color: '#FDE047', marginTop: 4 }}>
-              ROS Score: {experiment?.ros_score || 86.4}/100
+
+            <div style={{ background: '#0B1222', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(234,179,8,0.3)' }}>
+              <div style={{ fontSize: '0.72rem', color: '#FACC15', textTransform: 'uppercase', fontWeight: 700 }}>Return on Spend (ROI)</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#FACC15', marginTop: 4 }}>
+                {experiment?.roi_multiple || (isDemoMode ? 9.2 : 0)}x
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#FDE047', marginTop: 4 }}>
+                ROS Score: {experiment?.ros_score || (isDemoMode ? 86.4 : 0)}/100
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Grid: Control vs Treatment & Lifecycle Stage Visualizer */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 28 }}>
@@ -300,10 +338,10 @@ export default function RecoveryExperimentLab() {
               </div>
               <div style={{ fontSize: '0.75rem', color: '#64748B', marginBottom: 4 }}>Automated Outreach: NONE</div>
               <div style={{ fontSize: '0.85rem', color: '#E2E8F0', marginBottom: 4 }}>
-                Cases: <strong>{experiment?.control_cohort?.cases_count || 150}</strong>
+                Cases: <strong>{experiment?.control_cohort?.cases_count || (isDemoMode ? 150 : 0)}</strong>
               </div>
               <div style={{ fontSize: '0.85rem', color: '#E2E8F0', marginBottom: 4 }}>
-                Natural Recovery Rate: <strong>{experiment?.control_cohort?.recovery_rate_pct || 27.7}%</strong>
+                Natural Recovery Rate: <strong>{experiment?.control_cohort?.recovery_rate_pct || (isDemoMode ? 27.7 : 0)}%</strong>
               </div>
               <div style={{ fontSize: '0.85rem', color: '#94A3B8', marginBottom: 4 }}>
                 Total Cost: <strong>₹0.00</strong>
@@ -319,13 +357,13 @@ export default function RecoveryExperimentLab() {
               </div>
               <div style={{ fontSize: '0.75rem', color: '#60A5FA', marginBottom: 4 }}>ReviveOS Multi-Agent Governance</div>
               <div style={{ fontSize: '0.85rem', color: '#E2E8F0', marginBottom: 4 }}>
-                Cases: <strong>{experiment?.treatment_cohort?.cases_count || 350}</strong>
+                Cases: <strong>{experiment?.treatment_cohort?.cases_count || (isDemoMode ? 350 : 0)}</strong>
               </div>
               <div style={{ fontSize: '0.85rem', color: '#34D399', marginBottom: 4 }}>
-                Treatment Recovery Rate: <strong>{experiment?.treatment_cohort?.recovery_rate_pct || 36.9}%</strong>
+                Treatment Recovery Rate: <strong>{experiment?.treatment_cohort?.recovery_rate_pct || (isDemoMode ? 36.9 : 0)}%</strong>
               </div>
               <div style={{ fontSize: '0.85rem', color: '#E2E8F0', marginBottom: 4 }}>
-                Avg Cost / Recovery: <strong>₹4.85</strong>
+                Avg Cost / Recovery: <strong>₹{isDemoMode ? '4.85' : '0.00'}</strong>
               </div>
               <div style={{ fontSize: '0.75rem', color: '#93C5FD', marginTop: 8 }}>
                 Statistically significant net revenue lift after strict attention budget and stopping rules.

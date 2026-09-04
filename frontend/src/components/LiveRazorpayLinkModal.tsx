@@ -18,8 +18,8 @@ export default function LiveRazorpayLinkModal({
   isOpen,
   onClose,
   defaultAmount = 499,
-  customerName = "Aarav Mehta",
-  customerEmail = "aarav.mehta@example.com",
+  customerName = "Valued Customer",
+  customerEmail = "customer@example.com",
 }: LiveRazorpayLinkModalProps) {
   const [amount, setAmount] = useState<number>(defaultAmount);
   const [name, setName] = useState<string>(customerName);

@@ -4,27 +4,35 @@ import {
   Copy, Check, Zap, Bot, Shield, Play, RefreshCw,
   Send, CheckCircle2, Code2
 } from "lucide-react";
+import { useAppMode } from "../context/AppModeContext";
 import {
   listAgents, submitAgentProposal,
-  simulateAgentCollisionLive, simulateAgentBypassLive, API_BASE_URL
+  simulateAgentCollisionLive, simulateAgentBypassLive, API_BASE_URL,
+  getRazorpayStatus
 } from "../api/client";
 import LiveRazorpayLinkModal from "../components/LiveRazorpayLinkModal";
 
 export default function DeveloperHub() {
+  const { isRealMode, currentMode } = useAppMode();
   const [activeLang, setActiveLang] = useState<"python" | "node" | "mcp" | "curl">("python");
   const [copiedCode, setCopiedCode] = useState(false);
   const [showLiveModal, setShowLiveModal] = useState(false);
+  const [modalAmount, setModalAmount] = useState<number>(2499);
+  const [modalCustomer, setModalCustomer] = useState<string>("Valued Customer");
 
+  // Provider Status
+  const [razorpayStatus, setRazorpayStatus] = useState<any>(null);
 
   // Live Agent Registry
   const [agents, setAgents] = useState<any[]>([]);
   const [loadingAgents, setLoadingAgents] = useState(false);
 
   // Playground state
-  const [selectedAgentId, setSelectedAgentId] = useState<string>("sub_agent_merch0");
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("sub_agent_default");
   const [actionType, setActionType] = useState<string>("SCHEDULE_MANDATE_RETRY");
   const [amountInr, setAmountInr] = useState<number>(2499);
   const [recoveryProb, setRecoveryProb] = useState<number>(0.88);
+  const [customerName, setCustomerName] = useState<string>(isRealMode ? "Customer 1042" : "Enterprise Client");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [playgroundResult, setPlaygroundResult] = useState<any>(null);
 
@@ -36,15 +44,25 @@ export default function DeveloperHub() {
   const [runningBypass, setRunningBypass] = useState<boolean>(false);
   const [bypassResult, setBypassResult] = useState<any>(null);
 
-  const apiKey = "revive_ak_live_8f2a1c4e9b7d3f6a2e5c8b1d";
+  const apiKey = razorpayStatus?.credentials?.key_id || "revive_ak_live_8f2a1c4e9b7d3f6a2e5c8b1d";
 
   const fetchAgents = async () => {
     try {
       setLoadingAgents(true);
       const res = await listAgents();
-      setAgents(res || []);
-      if (res && res.length > 0 && !selectedAgentId) {
-        setSelectedAgentId(res[0].agent_id);
+      // Strict deduplication by agent_name and agent_type so duplicates never render
+      const seen = new Set<string>();
+      const deduped: any[] = [];
+      for (const ag of res || []) {
+        const key = `${ag.agent_name}::${ag.agent_type}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          deduped.push(ag);
+        }
+      }
+      setAgents(deduped);
+      if (deduped.length > 0 && !selectedAgentId) {
+        setSelectedAgentId(deduped[0].agent_id);
       }
     } catch (e) {
       console.error("Failed to load agents:", e);
@@ -55,7 +73,8 @@ export default function DeveloperHub() {
 
   useEffect(() => {
     fetchAgents();
-  }, []);
+    getRazorpayStatus().then(st => setRazorpayStatus(st)).catch(() => null);
+  }, [currentMode, isRealMode]);
 
   const handlePlaygroundSubmit = async () => {
     setIsSubmitting(true);
@@ -64,9 +83,9 @@ export default function DeveloperHub() {
       const res = await submitAgentProposal({
         protocol_version: "v1",
         agent_id: selectedAgentId,
-        opportunity_id: "OPP-LIVE-001",
-        customer_id: "CUST-9821",
-        customer_name: "Aarav Mehta",
+        opportunity_id: isRealMode ? "OPP-LIVE-PROPOSAL" : "OPP-SIM-001",
+        customer_id: isRealMode ? "CUST-LIVE-01" : "CUST-9821",
+        customer_name: customerName,
         proposed_action: {
           type: actionType,
           amount_paise: Math.round(amountInr * 100),
@@ -75,7 +94,7 @@ export default function DeveloperHub() {
         estimated_recovery_probability: recoveryProb,
         estimated_natural_recovery: 0.10,
         estimated_cost_paise: 400,
-        reason: "Interactive Agent Playground submission via Developer Hub",
+        reason: `Autonomous Agent Playground proposal submission via Developer Hub (${currentMode})`,
       });
       setPlaygroundResult(res);
       fetchAgents();
@@ -133,7 +152,8 @@ context = client.get_opportunity_context("OPP-001")
 # 2. Submit proposal for ReviveOS arbitration
 decision = client.submit_proposal(
     opportunity_id="OPP-001",
-    customer_id="CUST-9821",
+    customer_id="CUST-1042",
+    customer_name="Enterprise Client",
     action_type="SCHEDULE_MANDATE_RETRY",
     amount_paise=249900,
     estimated_recovery_probability=0.88,
@@ -160,8 +180,8 @@ async function submitRecoveryProposal() {
     protocol_version: 'v1',
     agent_id: AGENT_ID,
     opportunity_id: 'OPP-001',
-    customer_id: 'CUST-9821',
-    customer_name: 'Aarav Mehta',
+    customer_id: 'CUST-1042',
+    customer_name: 'Customer 1042',
     proposed_action: { type: 'SEND_PAYMENT_LINK', amount_paise: 499900 },
     estimated_recovery_probability: 0.45,
     reason: 'Checkout abandoned at OTP step'
@@ -199,7 +219,7 @@ async function submitRecoveryProposal() {
     "type": "object",
     "properties": {
       "opportunity_id": { "type": "string", "example": "OPP-001" },
-      "customer_id": { "type": "string", "example": "CUST-9821" },
+      "customer_id": { "type": "string", "example": "CUST-1042" },
       "action_type": {
         "type": "string",
         "enum": ["SCHEDULE_MANDATE_RETRY", "SEND_PAYMENT_LINK", "OFFER_10PCT_DISCOUNT", "SEND_INVOICE_REMINDER", "DELIBERATE_ABSTENTION"]
@@ -221,8 +241,8 @@ curl -X POST ${API_BASE_URL || 'http://localhost:8000'}/api/agents/proposals \\
   -d '{
     "protocol_version": "v1",
     "opportunity_id": "OPP-001",
-    "customer_id": "CUST-9821",
-    "customer_name": "Aarav Mehta",
+    "customer_id": "CUST-1042",
+    "customer_name": "Customer 1042",
     "proposed_action": {
       "type": "SCHEDULE_MANDATE_RETRY",
       "amount_paise": 249900,
@@ -238,14 +258,26 @@ curl -X POST ${API_BASE_URL || 'http://localhost:8000'}/api/agents/proposals \\
     <div style={{ maxWidth: "1280px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "28px", paddingBottom: "80px" }}>
       
       {/* Live Payment Link Modal */}
-      <LiveRazorpayLinkModal isOpen={showLiveModal} onClose={() => setShowLiveModal(false)} defaultAmount={2499} />
+      <LiveRazorpayLinkModal isOpen={showLiveModal} onClose={() => setShowLiveModal(false)} defaultAmount={modalAmount} customerName={modalCustomer} />
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px" }}>
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px", flexWrap: "wrap" }}>
             <span className="badge badge-purple" style={{ fontSize: "0.6875rem", fontWeight: 700 }}>
               AGENT INTEROPERABILITY & GOVERNANCE GATEWAY
+            </span>
+            <span style={{
+              fontSize: "0.6875rem",
+              fontWeight: 800,
+              fontFamily: "var(--font-mono)",
+              padding: "2px 8px",
+              borderRadius: "4px",
+              background: razorpayStatus?.connected || razorpayStatus?.razorpay_configured ? "rgba(16, 185, 129, 0.15)" : "rgba(148, 163, 184, 0.1)",
+              color: razorpayStatus?.connected || razorpayStatus?.razorpay_configured ? "#10B981" : "#94A3B8",
+              border: `1px solid ${razorpayStatus?.connected || razorpayStatus?.razorpay_configured ? "rgba(16, 185, 129, 0.3)" : "rgba(148, 163, 184, 0.2)"}`
+            }}>
+              {razorpayStatus?.connected || razorpayStatus?.razorpay_configured ? "● RAZORPAY LIVE RAILS: CONNECTED" : isRealMode ? "○ RAZORPAY: UNCONFIGURED" : "● RAZORPAY: SYNTHETIC HARNESS"}
             </span>
             <span style={{ fontSize: "0.75rem", color: "var(--text-tertiary)" }}>
               Protocol v1 • HMAC-SHA256 Signed Proposals • Model Context Protocol (MCP)
@@ -261,7 +293,11 @@ curl -X POST ${API_BASE_URL || 'http://localhost:8000'}/api/agents/proposals \\
 
         <div style={{ display: "flex", gap: "10px" }}>
           <button
-            onClick={() => setShowLiveModal(true)}
+            onClick={() => {
+              setModalAmount(amountInr || 2499);
+              setModalCustomer(customerName || "Valued Customer");
+              setShowLiveModal(true);
+            }}
             style={{
               padding: "10px 18px",
               borderRadius: "10px",
@@ -352,8 +388,8 @@ curl -X POST ${API_BASE_URL || 'http://localhost:8000'}/api/agents/proposals \\
                   <td style={{ padding: "12px 10px" }}>
                     <span style={{
                       fontSize: "10px", fontWeight: 800, padding: "2px 8px", borderRadius: "4px", fontFamily: "var(--font-mono)",
-                      background: ag.status === "TRUSTED" ? "rgba(16,185,129,0.15)" : ag.status === "PROBATION" ? "rgba(245,158,11,0.15)" : "rgba(239,68,68,0.15)",
-                      color: ag.status === "TRUSTED" ? "#10B981" : ag.status === "PROBATION" ? "#F59E0B" : "#EF4444",
+                      background: (ag.status === "TRUSTED" || ag.status === "ACTIVE") ? "rgba(16,185,129,0.15)" : ag.status === "PROBATION" ? "rgba(245,158,11,0.15)" : "rgba(239,68,68,0.15)",
+                      color: (ag.status === "TRUSTED" || ag.status === "ACTIVE") ? "#10B981" : ag.status === "PROBATION" ? "#F59E0B" : "#EF4444",
                     }}>
                       {ag.status}
                     </span>
@@ -488,7 +524,7 @@ curl -X POST ${API_BASE_URL || 'http://localhost:8000'}/api/agents/proposals \\
           </span>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "14px" }}>
           <div>
             <label style={{ fontSize: "11px", color: "#94A3B8", display: "block", marginBottom: "6px" }}>Proposing Agent</label>
             <select
@@ -514,6 +550,17 @@ curl -X POST ${API_BASE_URL || 'http://localhost:8000'}/api/agents/proposals \\
               <option value="OFFER_10PCT_DISCOUNT">OFFER_10PCT_DISCOUNT (Destroys margin)</option>
               <option value="SEND_INVOICE_REMINDER">SEND_INVOICE_REMINDER (B2B)</option>
             </select>
+          </div>
+
+          <div>
+            <label style={{ fontSize: "11px", color: "#94A3B8", display: "block", marginBottom: "6px" }}>Target Customer</label>
+            <input
+              type="text"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              placeholder="e.g. Enterprise Client / Customer 1042"
+              style={{ width: "100%", padding: "8px", background: "#0F1117", border: "1px solid #1E2230", color: "#FFF", borderRadius: "8px", fontSize: "12px" }}
+            />
           </div>
 
           <div>
@@ -580,9 +627,35 @@ curl -X POST ${API_BASE_URL || 'http://localhost:8000'}/api/agents/proposals \\
             </div>
 
             {playgroundResult.action_contract && (
-              <div style={{ background: "#0F1117", border: "1px solid #1E2230", borderRadius: "8px", padding: "12px", display: "flex", flexDirection: "column", gap: "4px", marginTop: "6px" }}>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "#00F0FF", fontWeight: 700 }}>
-                  SIGNED ACTION CONTRACT ISSUED: {playgroundResult.action_contract.contract_id}
+              <div style={{ background: "#0F1117", border: "1px solid #1E2230", borderRadius: "8px", padding: "14px", display: "flex", flexDirection: "column", gap: "8px", marginTop: "6px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "#00F0FF", fontWeight: 700 }}>
+                    SIGNED ACTION CONTRACT ISSUED: {playgroundResult.action_contract.contract_id}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setModalAmount(playgroundResult.action_contract.amount_inr || amountInr || 2499);
+                      setModalCustomer(customerName || "Valued Customer");
+                      setShowLiveModal(true);
+                    }}
+                    style={{
+                      padding: "4px 12px",
+                      borderRadius: "6px",
+                      background: "rgba(0, 240, 255, 0.15)",
+                      border: "1px solid #00F0FF",
+                      color: "#00F0FF",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "10px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "5px",
+                    }}
+                  >
+                    <Zap size={11} />
+                    <span>⚡ EXECUTE ON LIVE RAZORPAY RAILS</span>
+                  </button>
                 </div>
                 <div style={{ fontSize: "11px", color: "#94A3B8" }}>
                   Amount: <strong>₹{playgroundResult.action_contract.amount_inr}</strong> • Strategy: <strong>{playgroundResult.action_contract.strategy_type}</strong> • TTL: <strong>{playgroundResult.action_contract.ttl_remaining_seconds}s</strong>

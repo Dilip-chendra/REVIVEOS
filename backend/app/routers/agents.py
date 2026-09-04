@@ -379,10 +379,16 @@ async def get_proposal_decision(proposal_id: str):
 
 
 @router.post("/simulate-collision")
-async def simulate_agent_collision(current_user: Optional[User] = Depends(get_current_user)):
-    tenant_id = current_user.merchant_id if current_user else "MERCH-001"
-    customer_id = "CUST-9821"
-    customer_name = "Aarav Mehta"
+async def simulate_agent_collision(
+    request: Request,
+    current_user: Optional[User] = Depends(get_current_user),
+):
+    from app.auth import get_effective_mode
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
+    tenant_id = current_user.merchant_id if current_user else "default"
+    customer_id = "CUST-TEST-001" if is_real else "CUST-9821"
+    customer_name = "Test Customer" if is_real else "Enterprise Client"
     opp_id = "OPP-COLLISION-001"
 
     sub_id = next((a.agent_id for a in agent_registry.list_agents(tenant_id) if a.agent_type == AgentType.SUBSCRIPTION_RECOVERY), "sub_agent_default")

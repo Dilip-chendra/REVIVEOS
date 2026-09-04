@@ -1,9 +1,8 @@
-﻿"""ReviveAI 2.0 — Counterfactual Recovery Lab Router"""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from app.auth import get_current_user
+from app.auth import get_current_user, get_effective_mode
 from app.models.user import User
 from app.state import get_state
 from app.services.counterfactual_lab import counterfactual_lab
@@ -90,11 +89,19 @@ async def evaluate_counterfactuals(
 @router.get("/case/{case_id}")
 async def evaluate_existing_case(
     case_id: str,
+    request: Request,
     policy_ceiling_inr: float = 500000.0,
     current_user: User = Depends(get_current_user),
 ):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
     state = get_state(current_user.merchant_id)
-    cases = state.get("cases", [])
+    if is_real:
+        env = state.get("active_environment", "RAZORPAY_TEST")
+        target_key = "provider_live_cases" if env == "RAZORPAY_LIVE" else "provider_test_cases"
+        cases = state.get(target_key, [])
+    else:
+        cases = state.get("demo_cases", state.get("cases", []))
     case = next((c for c in cases if c["id"] == case_id), None)
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")

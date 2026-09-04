@@ -74,7 +74,7 @@ class RunAuctionRequest(BaseModel):
 
 class ArbitrateAgentsRequest(BaseModel):
     customer_id: str = "CUST-9821"
-    customer_name: str = "Aarav Mehta"
+    customer_name: str = "Enterprise Client"
 
 
 class GenerateLinkRequest(BaseModel):

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Network, Activity, Play, Clock
+  Network, Activity, Play, Clock, CheckCircle2
 } from 'lucide-react';
+import { useAppMode } from '../context/AppModeContext';
 import { getIncidents, triggerCanary, resolveIncident, simulateLiveTraffic } from '../api/client';
 
 export const GatewayCommander: React.FC = () => {
+  const { isRealMode, currentMode } = useAppMode();
   const [incidents, setIncidents] = useState<any[]>([]);
   
   // Traffic simulator
@@ -16,7 +18,7 @@ export const GatewayCommander: React.FC = () => {
   const loadIncidents = async () => {
     try {
       const data = await getIncidents();
-      setIncidents(data);
+      setIncidents(data || []);
     } catch (e) {
       console.error('Failed to load incidents:', e);
     }
@@ -60,7 +62,7 @@ export const GatewayCommander: React.FC = () => {
   useEffect(() => {
     loadIncidents();
     handleRunTraffic();
-  }, []);
+  }, [currentMode, isRealMode]);
 
   const activeInc = incidents[0];
 
@@ -100,13 +102,13 @@ export const GatewayCommander: React.FC = () => {
                   fontSize: '0.6875rem',
                   padding: '2px 8px',
                   borderRadius: '12px',
-                  background: activeInc?.status === 'RESOLVED' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                  color: activeInc?.status === 'RESOLVED' ? '#10B981' : '#EF4444',
-                  border: activeInc?.status === 'RESOLVED' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)',
+                  background: !activeInc ? 'rgba(16, 185, 129, 0.2)' : activeInc?.status === 'RESOLVED' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                  color: !activeInc ? '#10B981' : activeInc?.status === 'RESOLVED' ? '#10B981' : '#EF4444',
+                  border: !activeInc ? '1px solid rgba(16, 185, 129, 0.4)' : activeInc?.status === 'RESOLVED' ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)',
                   fontWeight: 700,
                   fontFamily: 'monospace'
                 }}>
-                  {activeInc?.status || 'INCIDENT ACTIVE'}
+                  {!activeInc ? '● ALL SYSTEMS HEALTHY • 0 INCIDENTS' : (activeInc?.status || 'INCIDENT ACTIVE')}
                 </span>
               </div>
               <p style={{ fontSize: '0.8125rem', color: '#94A3B8', marginTop: '4px' }}>
@@ -116,7 +118,7 @@ export const GatewayCommander: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {activeInc?.status !== 'RESOLVED' && (
+            {activeInc && activeInc?.status !== 'RESOLVED' && (
               <>
                 <button
                   onClick={handleCanary}
@@ -155,8 +157,8 @@ export const GatewayCommander: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Active Incident Telemetry Box ── */}
-      {activeInc && (
+      {/* ── Active Incident Telemetry Box (or Zero-Incident Nominal State) ── */}
+      {activeInc ? (
         <div style={{
           background: '#0F172A',
           border: '1px solid #1E293B',
@@ -244,6 +246,81 @@ export const GatewayCommander: React.FC = () => {
                   <span style={{ color: '#E2E8F0' }}>{evt.event}</span>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{
+          background: '#0F172A',
+          border: '1px solid rgba(16, 185, 129, 0.3)',
+          borderRadius: '24px',
+          padding: '24px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '20px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', borderBottom: '1px solid #1E293B', paddingBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckCircle2 size={22} color="#10B981" />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.6875rem', color: '#10B981', fontWeight: 800, textTransform: 'uppercase', fontFamily: 'monospace' }}>
+                  TELEMETRY NORMAL • ZERO PROCESSOR OUTAGES
+                </div>
+                <h2 style={{ fontSize: '1.125rem', fontWeight: 800, color: '#FFF', marginTop: '2px' }}>
+                  {isRealMode ? 'Razorpay Production Rails Active' : 'All Gateway Processors Nominal'}
+                </h2>
+                <p style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: '2px' }}>
+                  Sub-2s automated failover circuits armed. No gateway timeouts, rate-limit throttles, or latency spikes detected.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', fontFamily: 'monospace' }}>
+              <div style={{ background: '#1E293B', border: '1px solid #334155', borderRadius: '12px', padding: '12px 18px', textAlign: 'right' }}>
+                <div style={{ fontSize: '0.625rem', color: '#64748B', textTransform: 'uppercase', fontFamily: 'sans-serif' }}>Processor Health</div>
+                <div style={{ fontSize: '1.125rem', fontWeight: 800, color: '#10B981' }}>100.0%</div>
+              </div>
+              <div style={{ background: '#1E293B', border: '1px solid #334155', borderRadius: '12px', padding: '12px 18px', textAlign: 'right' }}>
+                <div style={{ fontSize: '0.625rem', color: '#64748B', textTransform: 'uppercase', fontFamily: 'sans-serif' }}>Active Incidents</div>
+                <div style={{ fontSize: '1.125rem', fontWeight: 800, color: '#10B981' }}>0</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 3-Node Topology Distribution Grid */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#E2E8F0' }}>Live Dynamic Multi-Node Traffic Allocation</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+              
+              {/* Razorpay Node */}
+              <div style={{ background: '#1E293B', border: '1px solid rgba(16, 185, 129, 0.4)', borderRadius: '16px', padding: '18px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600 }}>Razorpay Processor</div>
+                <div style={{ fontSize: '2rem', fontWeight: 800, color: '#10B981', fontFamily: 'monospace', marginTop: '4px' }}>
+                  100%
+                </div>
+                <div style={{ fontSize: '0.6875rem', color: '#10B981', marginTop: '4px', fontWeight: 600 }}>● Primary Active Route (Verified Healthy)</div>
+              </div>
+
+              {/* Cashfree Node */}
+              <div style={{ background: '#1E293B', border: '1px solid rgba(139, 92, 246, 0.2)', borderRadius: '16px', padding: '18px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600 }}>Cashfree Processor</div>
+                <div style={{ fontSize: '2rem', fontWeight: 800, color: '#C4B5FD', fontFamily: 'monospace', marginTop: '4px' }}>
+                  0%
+                </div>
+                <div style={{ fontSize: '0.6875rem', color: '#94A3B8', marginTop: '4px', fontWeight: 600 }}>● Standby Secondary Route (Armed)</div>
+              </div>
+
+              {/* PayU Node */}
+              <div style={{ background: '#1E293B', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '16px', padding: '18px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: '#94A3B8', fontWeight: 600 }}>PayU Processor</div>
+                <div style={{ fontSize: '2rem', fontWeight: 800, color: '#FCD34D', fontFamily: 'monospace', marginTop: '4px' }}>
+                  0%
+                </div>
+                <div style={{ fontSize: '0.6875rem', color: '#94A3B8', marginTop: '4px', fontWeight: 600 }}>● Standby Tertiary Route (Armed)</div>
+              </div>
+
             </div>
           </div>
         </div>

@@ -2,11 +2,12 @@
 """
 ReviveOS — Recovery Experiment & Innovation Router
 """
-from fastapi import APIRouter, Depends, Query, HTTPException, Header
+from fastapi import APIRouter, Depends, Query, HTTPException, Header, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
-from app.auth import get_current_user
+from app.auth import get_current_user, get_effective_mode
+from app.state import get_state
 from app.models.user import User
 from app.services.recovery_experiment import recovery_experiment_engine
 from app.services.batch_recovery_simulator import batch_simulator
@@ -43,10 +44,19 @@ class CreatePromiseRequest(BaseModel):
 
 
 @router.get("/recovery-experiments")
-async def list_experiments(current_user: User = Depends(get_current_user)):
+async def list_experiments(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
     res = recovery_experiment_engine.list_experiments()
+    if is_real:
+        # In real mode: return only experiments recorded for real data, or empty list
+        real_exps = [e for e in res if getattr(e, "data_universe", "") in ("REAL", "RAZORPAY_TEST", "RAZORPAY_LIVE")]
+        return [e.to_dict() if hasattr(e, "to_dict") else e for e in real_exps]
     if not res:
-        # Generate default benchmark experiment on first request
+        # Generate default benchmark experiment on first request in DEMO mode
         default_exp = recovery_experiment_engine.run_experiment(batch_size=500, seed=42, is_demo=True)
         return [default_exp.to_dict()]
     return res
@@ -55,10 +65,12 @@ async def list_experiments(current_user: User = Depends(get_current_user)):
 @router.post("/recovery-experiments/run")
 async def run_recovery_experiment(
     req: RunExperimentRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     x_revive_mode: Optional[str] = Header(None, alias="X-Revive-Mode"),
 ):
-    is_demo = (x_revive_mode != "REAL")
+    mode = get_effective_mode(request, current_user)
+    is_demo = (mode != "real")
     result = recovery_experiment_engine.run_experiment(
         batch_size=req.batch_size,
         seed=req.seed,
@@ -81,8 +93,50 @@ async def get_batch_opportunities(size: int = 500, seed: int = 42, current_user:
 
 
 @router.get("/recovery-forecast")
-async def get_recovery_forecast(current_user: User = Depends(get_current_user)):
-    # Standard 30-day forecast breakdown
+async def get_recovery_forecast(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
+    if is_real:
+        mid = current_user.merchant_id
+        state = get_state(mid)
+        env = state.get("active_environment", "RAZORPAY_TEST")
+        target_key = "provider_live_cases" if env == "RAZORPAY_LIVE" else "provider_test_cases"
+        cases = state.get(target_key, [])
+        if not cases:
+            return {
+                "today_inr": 0.0,
+                "h24_inr": 0.0,
+                "h72_inr": 0.0,
+                "d7_inr": 0.0,
+                "d30_inr": 0.0,
+                "breakdown": {
+                    "natural_recovery_inr": 0.0,
+                    "intervention_opportunity_inr": 0.0,
+                    "human_escalation_inr": 0.0,
+                    "potential_loss_inr": 0.0,
+                },
+                "data_universe": "RAZORPAY_TEST",
+            }
+        total_amt = sum(c.get("amount_inr", 0) for c in cases)
+        return {
+            "today_inr": round(total_amt * 0.75, 2),
+            "h24_inr": round(total_amt * 0.60, 2),
+            "h72_inr": round(total_amt * 0.40, 2),
+            "d7_inr": round(total_amt * 0.20, 2),
+            "d30_inr": round(total_amt * 0.05, 2),
+            "breakdown": {
+                "natural_recovery_inr": round(total_amt * 0.25, 2),
+                "intervention_opportunity_inr": round(total_amt * 0.50, 2),
+                "human_escalation_inr": round(total_amt * 0.15, 2),
+                "potential_loss_inr": round(total_amt * 0.10, 2),
+            },
+            "data_universe": "RAZORPAY_TEST",
+        }
+
+    # Standard 30-day forecast breakdown for DEMO
     return {
         "today_inr": 1840000.0,
         "h24_inr": 1590000.0,

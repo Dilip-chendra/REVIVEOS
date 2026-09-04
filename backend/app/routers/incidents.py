@@ -1,8 +1,7 @@
-"""ReviveAI 2.0 — Gateway Incident Commander & Traffic Simulator Router"""
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 
-from app.auth import get_current_user
+from app.auth import get_current_user, get_effective_mode
 from app.models.user import User
 from app.services.incident_commander import incident_commander
 
@@ -21,9 +20,14 @@ class CanaryRequest(BaseModel):
 
 
 @router.get("")
-async def list_incidents(current_user: User = Depends(get_current_user)):
+async def list_incidents(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
     """Returns active gateway incidents and mitigation plans."""
-    return incident_commander.get_incidents(current_user.merchant_id)
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
+    return incident_commander.get_incidents(current_user.merchant_id, is_real_mode=is_real)
 
 
 @router.post("/canary")
@@ -56,7 +60,10 @@ async def simulate_traffic_stream(
 
 
 @router.get("/clusters")
-async def get_failure_clusters(current_user: User = Depends(get_current_user)):
+async def get_failure_clusters(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
     """
     Returns detected failure clusters grouped by shared provider/gateway/time signature.
     Enables treating systemic outages as bulk incidents rather than isolated retries.
@@ -64,18 +71,24 @@ async def get_failure_clusters(current_user: User = Depends(get_current_user)):
     from app.state import get_state
     from app.services.opportunity_graph import opportunity_graph
     
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
     mid = current_user.merchant_id
     state = get_state(mid)
     env = state.get("active_environment", "DEMO")
-    cases = state.get("cases", [])
     
-    if env in ("RAZORPAY_TEST", "RAZORPAY_LIVE") and not cases:
-        return {
-            "active_environment": env,
-            "total_clusters": 0,
-            "clusters": [],
-            "message": "No real provider failure clusters detected.",
-        }
+    if is_real or env in ("RAZORPAY_TEST", "RAZORPAY_LIVE"):
+        target_key = "provider_live_cases" if env == "RAZORPAY_LIVE" else "provider_test_cases"
+        cases = state.get(target_key, [])
+        if not cases:
+            return {
+                "active_environment": env,
+                "total_clusters": 0,
+                "clusters": [],
+                "message": "No real provider failure clusters detected.",
+            }
+    else:
+        cases = state.get("demo_cases", state.get("cases", []))
         
     opportunity_graph.build_from_opportunities(cases)
     clusters = opportunity_graph.get_all_clusters()

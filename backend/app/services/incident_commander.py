@@ -1,4 +1,4 @@
-﻿"""
+"""
 ReviveAI 2.0 — Gateway Incident Commander & Traffic Simulator
 
 Manages operational gateway incident lifecycles (PayU outage, Stripe latency spikes),
@@ -68,10 +68,10 @@ class IncidentCommander:
             )
         return _active_incidents[merchant_id]
 
-    def get_incidents(self, merchant_id: str) -> List[Dict[str, Any]]:
+    def get_incidents(self, merchant_id: str, is_real_mode: bool = False) -> List[Dict[str, Any]]:
         from app.state import get_state
         state = get_state(merchant_id)
-        if state.get("active_environment") in ("RAZORPAY_TEST", "RAZORPAY_LIVE"):
+        if is_real_mode or state.get("active_environment") in ("RAZORPAY_TEST", "RAZORPAY_LIVE"):
             # In Real Mode: Razorpay test rails are operational and healthy (0 incidents)
             return []
         inc = self.get_or_create_payu_incident(merchant_id)

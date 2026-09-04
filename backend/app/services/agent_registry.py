@@ -143,169 +143,166 @@ class AgentRegistry:
         tenants = ["default", "MERCH-001", "MERCH-TEST-001", "merch0", "merch_001"]
 
         for t in tenants:
-            clean_tag = t.lower().replace("-", "_")
-            tag_variants = [t.lower(), clean_tag, t[:6].lower(), t[:5].lower()]
+            tag = t.lower().replace("-", "_")
+            # 1. Subscription Agent
+            sub_id = f"sub_agent_{tag}"
+            if sub_id not in self._agents:
+                sub_key = f"key_sub_{tag}"
+                sub_sec = f"hmac_sub_secret_{t}_2026"
+                manifest = AgentCapabilityManifest(
+                    agent_id=sub_id,
+                    capabilities=[AgentCapability.PROPOSE_MANDATE_RETRY, AgentCapability.DELIBERATE_ABSTENTION, AgentCapability.READ_RECOVERY_CONTEXT],
+                    allowed_actions=["SCHEDULE_MANDATE_RETRY", "MANDATE_RETRY", "DELIBERATE_ABSTENTION"],
+                    allowed_channels=["RAZORPAY", "eMandate_S2S_Retry"],
+                    max_amount_inr=50000.0,
+                )
+                self._manifests[sub_id] = manifest
+                self._keys[sub_key] = AgentKeyRecord(
+                    key_id=sub_key,
+                    agent_id=sub_id,
+                    secret_plain=sub_sec,
+                    secret_hash=hashlib.sha256(sub_sec.encode()).hexdigest(),
+                )
+                self._agents[sub_id] = AgentRecord(
+                    agent_id=sub_id,
+                    agent_name="AI Subscription Mandate Agent",
+                    agent_type=AgentType.SUBSCRIPTION_RECOVERY,
+                    tenant_id=t,
+                    integration_type=AgentIntegrationType.SDK,
+                    capabilities=manifest.capabilities,
+                    version="1.1.0",
+                    api_key_hash=hashlib.sha256(f"sub_key_{t}".encode()).hexdigest(),
+                    hmac_secret=sub_sec,
+                    key_id=sub_key,
+                    status=AgentStatus.ACTIVE,
+                    trust_score=94.5,
+                    total_proposals=342,
+                    approved_proposals=280,
+                    suppressed_proposals=52,
+                    rejected_proposals=10,
+                    description="Autonomous recurring subscription recovery via server-to-server mandate retries.",
+                    capability_manifest=manifest,
+                )
 
-            for tag in set(tag_variants):
-                # 1. Subscription Agent
-                sub_id = f"sub_agent_{tag}"
-                if sub_id not in self._agents:
-                    sub_key = f"key_sub_{tag}"
-                    sub_sec = f"hmac_sub_secret_{t}_2026"
-                    manifest = AgentCapabilityManifest(
-                        agent_id=sub_id,
-                        capabilities=[AgentCapability.PROPOSE_MANDATE_RETRY, AgentCapability.DELIBERATE_ABSTENTION, AgentCapability.READ_RECOVERY_CONTEXT],
-                        allowed_actions=["SCHEDULE_MANDATE_RETRY", "MANDATE_RETRY", "DELIBERATE_ABSTENTION"],
-                        allowed_channels=["RAZORPAY", "eMandate_S2S_Retry"],
-                        max_amount_inr=50000.0,
-                    )
-                    self._manifests[sub_id] = manifest
-                    self._keys[sub_key] = AgentKeyRecord(
-                        key_id=sub_key,
-                        agent_id=sub_id,
-                        secret_plain=sub_sec,
-                        secret_hash=hashlib.sha256(sub_sec.encode()).hexdigest(),
-                    )
-                    self._agents[sub_id] = AgentRecord(
-                        agent_id=sub_id,
-                        agent_name="AI Subscription Mandate Agent",
-                        agent_type=AgentType.SUBSCRIPTION_RECOVERY,
-                        tenant_id=t,
-                        integration_type=AgentIntegrationType.SDK,
-                        capabilities=manifest.capabilities,
-                        version="1.1.0",
-                        api_key_hash=hashlib.sha256(f"sub_key_{t}".encode()).hexdigest(),
-                        hmac_secret=sub_sec,
-                        key_id=sub_key,
-                        status=AgentStatus.ACTIVE,
-                        trust_score=94.5,
-                        total_proposals=342,
-                        approved_proposals=280,
-                        suppressed_proposals=52,
-                        rejected_proposals=10,
-                        description="Autonomous recurring subscription recovery via server-to-server mandate retries.",
-                        capability_manifest=manifest,
-                    )
+            # 2. Abandoned Cart Agent
+            cart_id = f"cart_agent_{tag}"
+            if cart_id not in self._agents:
+                cart_key = f"key_cart_{tag}"
+                cart_sec = f"hmac_cart_secret_{t}_2026"
+                manifest_cart = AgentCapabilityManifest(
+                    agent_id=cart_id,
+                    capabilities=[AgentCapability.PROPOSE_PAYMENT_LINK, AgentCapability.PROPOSE_CUSTOMER_PROMPT, AgentCapability.READ_RECOVERY_CONTEXT],
+                    allowed_actions=["SEND_PAYMENT_LINK", "PAYMENT_LINK", "IN_APP_CHECKOUT_PROMPT"],
+                    allowed_channels=["RAZORPAY", "WhatsApp_Payment_Link", "SMS_Payment_Link"],
+                    max_amount_inr=50000.0,
+                )
+                self._manifests[cart_id] = manifest_cart
+                self._keys[cart_key] = AgentKeyRecord(
+                    key_id=cart_key,
+                    agent_id=cart_id,
+                    secret_plain=cart_sec,
+                    secret_hash=hashlib.sha256(cart_sec.encode()).hexdigest(),
+                )
+                self._agents[cart_id] = AgentRecord(
+                    agent_id=cart_id,
+                    agent_name="AI Cart Recovery Agent",
+                    agent_type=AgentType.ABANDONED_CART,
+                    tenant_id=t,
+                    integration_type=AgentIntegrationType.REST,
+                    capabilities=manifest_cart.capabilities,
+                    version="1.1.0",
+                    api_key_hash=hashlib.sha256(f"cart_key_{t}".encode()).hexdigest(),
+                    hmac_secret=cart_sec,
+                    key_id=cart_key,
+                    status=AgentStatus.ACTIVE,
+                    trust_score=88.0,
+                    total_proposals=215,
+                    approved_proposals=120,
+                    suppressed_proposals=85,
+                    rejected_proposals=10,
+                    description="WhatsApp & SMS dynamic checkout link dispatch for abandoned checkout sessions.",
+                    capability_manifest=manifest_cart,
+                )
 
-                # 2. Abandoned Cart Agent
-                cart_id = f"cart_agent_{tag}"
-                if cart_id not in self._agents:
-                    cart_key = f"key_cart_{tag}"
-                    cart_sec = f"hmac_cart_secret_{t}_2026"
-                    manifest_cart = AgentCapabilityManifest(
-                        agent_id=cart_id,
-                        capabilities=[AgentCapability.PROPOSE_PAYMENT_LINK, AgentCapability.PROPOSE_CUSTOMER_PROMPT, AgentCapability.READ_RECOVERY_CONTEXT],
-                        allowed_actions=["SEND_PAYMENT_LINK", "PAYMENT_LINK", "IN_APP_CHECKOUT_PROMPT"],
-                        allowed_channels=["RAZORPAY", "WhatsApp_Payment_Link", "SMS_Payment_Link"],
-                        max_amount_inr=50000.0,
-                    )
-                    self._manifests[cart_id] = manifest_cart
-                    self._keys[cart_key] = AgentKeyRecord(
-                        key_id=cart_key,
-                        agent_id=cart_id,
-                        secret_plain=cart_sec,
-                        secret_hash=hashlib.sha256(cart_sec.encode()).hexdigest(),
-                    )
-                    self._agents[cart_id] = AgentRecord(
-                        agent_id=cart_id,
-                        agent_name="AI Cart Recovery Agent",
-                        agent_type=AgentType.ABANDONED_CART,
-                        tenant_id=t,
-                        integration_type=AgentIntegrationType.REST,
-                        capabilities=manifest_cart.capabilities,
-                        version="1.1.0",
-                        api_key_hash=hashlib.sha256(f"cart_key_{t}".encode()).hexdigest(),
-                        hmac_secret=cart_sec,
-                        key_id=cart_key,
-                        status=AgentStatus.ACTIVE,
-                        trust_score=88.0,
-                        total_proposals=215,
-                        approved_proposals=120,
-                        suppressed_proposals=85,
-                        rejected_proposals=10,
-                        description="WhatsApp & SMS dynamic checkout link dispatch for abandoned checkout sessions.",
-                        capability_manifest=manifest_cart,
-                    )
+            # 3. Retention Discount Agent
+            ret_id = f"retention_agent_{tag}"
+            if ret_id not in self._agents:
+                ret_key = f"key_ret_{tag}"
+                ret_sec = f"hmac_ret_secret_{t}_2026"
+                manifest_ret = AgentCapabilityManifest(
+                    agent_id=ret_id,
+                    capabilities=[AgentCapability.PROPOSE_DISCOUNT, AgentCapability.PROPOSE_CUSTOMER_PROMPT, AgentCapability.READ_RECOVERY_CONTEXT],
+                    allowed_actions=["OFFER_10PCT_DISCOUNT", "DISCOUNT_OFFER", "IN_APP_CHECKOUT_PROMPT"],
+                    allowed_channels=["RAZORPAY", "SMS_Discount_Link", "Email_Discount"],
+                    max_amount_inr=50000.0,
+                )
+                self._manifests[ret_id] = manifest_ret
+                self._keys[ret_key] = AgentKeyRecord(
+                    key_id=ret_key,
+                    agent_id=ret_id,
+                    secret_plain=ret_sec,
+                    secret_hash=hashlib.sha256(ret_sec.encode()).hexdigest(),
+                )
+                self._agents[ret_id] = AgentRecord(
+                    agent_id=ret_id,
+                    agent_name="AI Churn & Retention Agent",
+                    agent_type=AgentType.CUSTOMER_RETENTION,
+                    tenant_id=t,
+                    integration_type=AgentIntegrationType.WEBHOOK,
+                    capabilities=manifest_ret.capabilities,
+                    version="1.1.0",
+                    api_key_hash=hashlib.sha256(f"ret_key_{t}".encode()).hexdigest(),
+                    hmac_secret=ret_sec,
+                    key_id=ret_key,
+                    status=AgentStatus.ACTIVE,
+                    trust_score=72.0,
+                    total_proposals=110,
+                    approved_proposals=24,
+                    suppressed_proposals=80,
+                    rejected_proposals=6,
+                    description="Proposes coupon and concession incentives (frequently suppressed by ReviveOS to prevent margin destruction).",
+                    capability_manifest=manifest_ret,
+                )
 
-                # 3. Retention Discount Agent
-                ret_id = f"retention_agent_{tag}"
-                if ret_id not in self._agents:
-                    ret_key = f"key_ret_{tag}"
-                    ret_sec = f"hmac_ret_secret_{t}_2026"
-                    manifest_ret = AgentCapabilityManifest(
-                        agent_id=ret_id,
-                        capabilities=[AgentCapability.PROPOSE_DISCOUNT, AgentCapability.PROPOSE_CUSTOMER_PROMPT, AgentCapability.READ_RECOVERY_CONTEXT],
-                        allowed_actions=["OFFER_10PCT_DISCOUNT", "DISCOUNT_OFFER", "IN_APP_CHECKOUT_PROMPT"],
-                        allowed_channels=["RAZORPAY", "SMS_Discount_Link", "Email_Discount"],
-                        max_amount_inr=50000.0,
-                    )
-                    self._manifests[ret_id] = manifest_ret
-                    self._keys[ret_key] = AgentKeyRecord(
-                        key_id=ret_key,
-                        agent_id=ret_id,
-                        secret_plain=ret_sec,
-                        secret_hash=hashlib.sha256(ret_sec.encode()).hexdigest(),
-                    )
-                    self._agents[ret_id] = AgentRecord(
-                        agent_id=ret_id,
-                        agent_name="AI Churn & Retention Agent",
-                        agent_type=AgentType.CUSTOMER_RETENTION,
-                        tenant_id=t,
-                        integration_type=AgentIntegrationType.WEBHOOK,
-                        capabilities=manifest_ret.capabilities,
-                        version="1.1.0",
-                        api_key_hash=hashlib.sha256(f"ret_key_{t}".encode()).hexdigest(),
-                        hmac_secret=ret_sec,
-                        key_id=ret_key,
-                        status=AgentStatus.ACTIVE,
-                        trust_score=72.0,
-                        total_proposals=110,
-                        approved_proposals=24,
-                        suppressed_proposals=80,
-                        rejected_proposals=6,
-                        description="Proposes coupon and concession incentives (frequently suppressed by ReviveOS to prevent margin destruction).",
-                        capability_manifest=manifest_ret,
-                    )
-
-                # 4. Invoice Collections Agent
-                inv_id = f"invoice_agent_{tag}"
-                if inv_id not in self._agents:
-                    inv_key = f"key_inv_{tag}"
-                    inv_sec = f"hmac_inv_secret_{t}_2026"
-                    manifest_inv = AgentCapabilityManifest(
-                        agent_id=inv_id,
-                        capabilities=[AgentCapability.PROPOSE_INVOICE_REMINDER, AgentCapability.REQUEST_HUMAN_REVIEW, AgentCapability.PROPOSE_PAYMENT_LINK, AgentCapability.READ_RECOVERY_CONTEXT],
-                        allowed_actions=["SEND_INVOICE_REMINDER", "INVOICE_REMINDER", "SEND_PAYMENT_LINK", "ESCALATE_TO_HUMAN"],
-                        allowed_channels=["RAZORPAY", "Email_Invoice_Reminder", "B2B_Portal"],
-                        max_amount_inr=50000.0,
-                    )
-                    self._manifests[inv_id] = manifest_inv
-                    self._keys[inv_key] = AgentKeyRecord(
-                        key_id=inv_key,
-                        agent_id=inv_id,
-                        secret_plain=inv_sec,
-                        secret_hash=hashlib.sha256(inv_sec.encode()).hexdigest(),
-                    )
-                    self._agents[inv_id] = AgentRecord(
-                        agent_id=inv_id,
-                        agent_name="AI B2B Invoice Collection Agent",
-                        agent_type=AgentType.INVOICE_COLLECTION,
-                        tenant_id=t,
-                        integration_type=AgentIntegrationType.MCP,
-                        capabilities=manifest_inv.capabilities,
-                        version="1.1.0",
-                        api_key_hash=hashlib.sha256(f"inv_key_{t}".encode()).hexdigest(),
-                        hmac_secret=inv_sec,
-                        key_id=inv_key,
-                        status=AgentStatus.ACTIVE,
-                        trust_score=91.0,
-                        total_proposals=84,
-                        approved_proposals=71,
-                        suppressed_proposals=10,
-                        rejected_proposals=3,
-                        description="B2B accounts receivable reminder agent operating via Model Context Protocol.",
-                        capability_manifest=manifest_inv,
-                    )
+            # 4. Invoice Collections Agent
+            inv_id = f"invoice_agent_{tag}"
+            if inv_id not in self._agents:
+                inv_key = f"key_inv_{tag}"
+                inv_sec = f"hmac_inv_secret_{t}_2026"
+                manifest_inv = AgentCapabilityManifest(
+                    agent_id=inv_id,
+                    capabilities=[AgentCapability.PROPOSE_INVOICE_REMINDER, AgentCapability.REQUEST_HUMAN_REVIEW, AgentCapability.PROPOSE_PAYMENT_LINK, AgentCapability.READ_RECOVERY_CONTEXT],
+                    allowed_actions=["SEND_INVOICE_REMINDER", "INVOICE_REMINDER", "SEND_PAYMENT_LINK", "ESCALATE_TO_HUMAN"],
+                    allowed_channels=["RAZORPAY", "Email_Invoice_Reminder", "B2B_Portal"],
+                    max_amount_inr=50000.0,
+                )
+                self._manifests[inv_id] = manifest_inv
+                self._keys[inv_key] = AgentKeyRecord(
+                    key_id=inv_key,
+                    agent_id=inv_id,
+                    secret_plain=inv_sec,
+                    secret_hash=hashlib.sha256(inv_sec.encode()).hexdigest(),
+                )
+                self._agents[inv_id] = AgentRecord(
+                    agent_id=inv_id,
+                    agent_name="AI B2B Invoice Collection Agent",
+                    agent_type=AgentType.INVOICE_COLLECTION,
+                    tenant_id=t,
+                    integration_type=AgentIntegrationType.MCP,
+                    capabilities=manifest_inv.capabilities,
+                    version="1.1.0",
+                    api_key_hash=hashlib.sha256(f"inv_key_{t}".encode()).hexdigest(),
+                    hmac_secret=inv_sec,
+                    key_id=inv_key,
+                    status=AgentStatus.ACTIVE,
+                    trust_score=91.0,
+                    total_proposals=84,
+                    approved_proposals=71,
+                    suppressed_proposals=10,
+                    rejected_proposals=3,
+                    description="B2B accounts receivable reminder agent operating via Model Context Protocol.",
+                    capability_manifest=manifest_inv,
+                )
 
     def register_agent(
         self,
@@ -384,9 +381,17 @@ class AgentRegistry:
         return self._agents.get(agent_id)
 
     def list_agents(self, tenant_id: Optional[str] = None) -> List[AgentRecord]:
-        if not tenant_id or tenant_id == "default":
-            return list(self._agents.values())
-        return [a for a in self._agents.values() if a.tenant_id in (tenant_id, "default")]
+        target_tenant = tenant_id or "default"
+        matching = [a for a in self._agents.values() if a.tenant_id in (target_tenant, "default")]
+        seen_keys = set()
+        unique_agents = []
+        matching.sort(key=lambda a: (0 if a.tenant_id == target_tenant else 1, a.agent_id))
+        for a in matching:
+            key = (a.agent_name, a.agent_type)
+            if key not in seen_keys:
+                seen_keys.add(key)
+                unique_agents.append(a)
+        return unique_agents
 
     def validate_action_authorization(
         self,

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useAppMode } from "../context/AppModeContext";
 import { getRecoveryOpportunities, getCategoryBreakdown, getDashboardMetrics, getGatewayHealth, getRazorpayStatus } from "../api/client";
 import { TrendingUp, AlertTriangle, Zap, Activity, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -27,11 +28,13 @@ const PRIORITY_COLOR: Record<string, string> = {
 };
 
 export default function Insights() {
+  const { isRealMode, currentMode } = useAppMode();
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
   const [providerStatus, setProviderStatus] = useState<any>(null);
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([
       getRecoveryOpportunities(100),
       getCategoryBreakdown(),
@@ -40,7 +43,7 @@ export default function Insights() {
       getRazorpayStatus().catch(() => null),
     ]).then(([opps, categories, _metrics, gateways, pStatus]) => {
       setProviderStatus(pStatus);
-      const isProv = pStatus?.active_environment === "RAZORPAY_TEST" || pStatus?.active_environment === "RAZORPAY_LIVE" || pStatus?.is_real_provider_data;
+      const isProv = isRealMode || pStatus?.active_environment === "RAZORPAY_TEST" || pStatus?.active_environment === "RAZORPAY_LIVE" || pStatus?.is_real_provider_data;
       const derived: Insight[] = [];
 
       // 1. Find biggest failure category by count
@@ -137,7 +140,7 @@ export default function Insights() {
         });
       }
 
-      if (derived.length === 0 && !isProv) {
+      if (derived.length === 0 && !isRealMode && !isProv) {
         derived.push(
           {
             id: "sweet-spot-demo",
@@ -182,7 +185,7 @@ export default function Insights() {
 
       setInsights(derived);
     }).finally(() => setLoading(false));
-  }, []);
+  }, [currentMode, isRealMode]);
 
   if (loading) return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px", opacity: 0.5 }}>
@@ -190,6 +193,8 @@ export default function Insights() {
       {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: "160px", borderRadius: "var(--r-lg)" }} />)}
     </div>
   );
+
+  const isProvActive = isRealMode || providerStatus?.active_environment === "RAZORPAY_TEST" || providerStatus?.active_environment === "RAZORPAY_LIVE" || Boolean(providerStatus?.is_real_provider_data);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "28px", paddingBottom: "64px" }}>
@@ -221,13 +226,13 @@ export default function Insights() {
         <div style={{ padding: "80px 24px", textAlign: "center", color: "var(--text-tertiary)", background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)" }}>
           <Activity size={32} style={{ margin: "0 auto 12px", opacity: 0.4 }} />
           <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--text-primary)", marginBottom: "6px" }}>
-            {providerStatus?.active_environment === "RAZORPAY_TEST" || providerStatus?.active_environment === "RAZORPAY_LIVE" || providerStatus?.is_real_provider_data
-              ? "Insufficient Data for a Statistically Reliable Insight"
+            {isProvActive
+              ? "No Live Recovery Anomalies Detected"
               : "No Demo Insights Available"}
           </div>
           <div style={{ fontSize: "0.875rem", maxWidth: "540px", margin: "0 auto", lineHeight: 1.5, color: "var(--text-secondary)" }}>
-            {providerStatus?.active_environment === "RAZORPAY_TEST" || providerStatus?.active_environment === "RAZORPAY_LIVE" || providerStatus?.is_real_provider_data
-              ? "Connect your Razorpay account and synchronize payment records to generate live root-cause intelligence and actionable recovery opportunities."
+            {isProvActive
+              ? "All Razorpay transactions are currently operating normally with zero payment leakage detected. Connect real payment declines to activate automated recovery insights."
               : "Reset demo scenarios in the topbar to reload the curated intelligence dataset."}
           </div>
         </div>

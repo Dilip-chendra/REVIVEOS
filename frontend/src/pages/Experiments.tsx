@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { 
   FlaskConical, RefreshCw, Award
 } from 'lucide-react';
+import { useAppMode } from '../context/AppModeContext';
 import { runABExperiment, getCalibrationCurve, getPerformanceMatrix } from '../api/client';
 
 export const Experiments: React.FC = () => {
+  const { isRealMode, currentMode } = useAppMode();
   const [cohortSize, setCohortSize] = useState<number>(500);
   const [abData, setAbData] = useState<any>(null);
   const [calibration, setCalibration] = useState<any>(null);
@@ -31,7 +33,7 @@ export const Experiments: React.FC = () => {
 
   useEffect(() => {
     runAll();
-  }, [cohortSize]);
+  }, [cohortSize, currentMode, isRealMode]);
 
   return (
     <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -65,8 +67,8 @@ export const Experiments: React.FC = () => {
                 <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#FFF', letterSpacing: '-0.02em' }}>
                   Experimentation & Strategy Backtest
                 </h1>
-                <span style={{ fontSize: '0.6875rem', padding: '2px 8px', borderRadius: '12px', background: 'rgba(6, 182, 212, 0.2)', color: '#67E8F9', border: '1px solid rgba(6, 182, 212, 0.3)', fontWeight: 700, fontFamily: 'monospace' }}>
-                  A/B STATISTICAL BENCHMARKS (p &lt; 0.001)
+                <span style={{ fontSize: '0.6875rem', padding: '2px 8px', borderRadius: '12px', background: isRealMode ? 'rgba(16, 185, 129, 0.2)' : 'rgba(6, 182, 212, 0.2)', color: isRealMode ? '#10B981' : '#67E8F9', border: isRealMode ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(6, 182, 212, 0.3)', fontWeight: 700, fontFamily: 'monospace' }}>
+                  {isRealMode ? 'REAL RAZORPAY BACKTEST HARNESS' : 'A/B STATISTICAL BENCHMARKS (p < 0.001)'}
                 </span>
               </div>
               <p style={{ fontSize: '0.8125rem', color: '#94A3B8', marginTop: '4px' }}>

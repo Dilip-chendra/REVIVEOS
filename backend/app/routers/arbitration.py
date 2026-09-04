@@ -39,7 +39,7 @@ class ProposalRequest(BaseModel):
 
 class ArbitrationRequest(BaseModel):
     customer_id: str = "CUST-9821"
-    customer_name: str = "Aarav Mehta"
+    customer_name: str = "Enterprise Client"
     proposals: Optional[List[ProposalRequest]] = None
     scenario_id: Optional[str] = None
 
