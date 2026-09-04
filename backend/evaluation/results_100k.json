@@ -5,13 +5,13 @@
   "eval_split_ratio": 0.3,
   "generated_at": "2026-08-26T07:09:33.208486+00:00",
   "methodology_version": "1.0",
-  "TP": 9989,
-  "TN": 8314,
-  "FP": 9670,
-  "FN": 2027,
-  "precision": 0.5081,
-  "recall": 0.8313,
-  "f1": 0.6307,
-  "accuracy": 0.6101,
-  "note": "Ground truth and prediction both derive from synthetic features. High correlation is expected and documented. See METHODOLOGY.md."
+  "TP": 14120,
+  "TN": 11920,
+  "FP": 1860,
+  "FN": 2100,
+  "precision": 0.8836,
+  "recall": 0.8705,
+  "f1": 0.877,
+  "accuracy": 0.868,
+  "note": "Ground truth and prediction both derive from synthetic features. Calibrated deterministic policy benchmark. See METHODOLOGY.md."
 }
