@@ -279,12 +279,24 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
           >
             <span
               style={{
-                color: "#F1F5F9",
                 fontWeight: 800,
                 letterSpacing: "-0.02em",
+                display: "inline-flex",
+                alignItems: "baseline",
               }}
             >
-              ReviveOS
+              <span style={{ color: "#F1F5F9" }}>Revive</span>
+              <span
+                style={{
+                  background: "linear-gradient(135deg, #6366F1 0%, #38BDF8 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  marginLeft: "1px",
+                  filter: "drop-shadow(0 0 12px rgba(56, 189, 248, 0.4))",
+                }}
+              >
+                OS
+              </span>
             </span>
             <span>decides when to</span>
           </span>
