@@ -108,10 +108,25 @@ export default function Landing({ onEnterDemo }: LandingProps) {
             justifyContent: "center",
             padding: "20px",
           }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setView("landing");
+          }}
         >
-          <div style={{ position: "relative" }}>
+          <div
+            style={{
+              position: "relative",
+              minWidth: "360px",
+              maxWidth: "480px",
+              width: "100%",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
             <button
               onClick={() => setView("landing")}
+              title="Close modal"
               style={{
                 position: "absolute",
                 top: -16,
@@ -126,26 +141,81 @@ export default function Landing({ onEnterDemo }: LandingProps) {
                 alignItems: "center",
                 justifyContent: "center",
                 cursor: "pointer",
-                zIndex: 10,
+                zIndex: 20,
+                boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
               }}
             >
               <X size={18} />
             </button>
-            {view === "signin" ? (
-              <SignIn
-                appearance={clerkAppearance}
-                routing="hash"
-                signUpUrl="#/signup"
-                afterSignInUrl="/"
-              />
-            ) : (
-              <SignUp
-                appearance={clerkAppearance}
-                routing="hash"
-                signInUrl="#/signin"
-                afterSignUpUrl="/"
-              />
-            )}
+
+            {/* Quick View Toggle Header */}
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                background: "#0F1117",
+                border: "1px solid #1E2230",
+                borderRadius: "10px",
+                padding: "4px",
+                marginBottom: "16px",
+                zIndex: 10,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setView("signin")}
+                style={{
+                  padding: "6px 16px",
+                  borderRadius: "7px",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  fontFamily: "var(--font-section-heading)",
+                  border: "none",
+                  cursor: "pointer",
+                  background: view === "signin" ? "#00F0FF" : "transparent",
+                  color: view === "signin" ? "#040711" : "#8E9BB0",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("signup")}
+                style={{
+                  padding: "6px 16px",
+                  borderRadius: "7px",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  fontFamily: "var(--font-section-heading)",
+                  border: "none",
+                  cursor: "pointer",
+                  background: view === "signup" ? "#00F0FF" : "transparent",
+                  color: view === "signup" ? "#040711" : "#8E9BB0",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                Create Account
+              </button>
+            </div>
+
+            <div style={{ width: "100%", display: "flex", justifyContent: "center" }}>
+              {view === "signin" ? (
+                <SignIn
+                  appearance={clerkAppearance}
+                  routing="virtual"
+                  fallbackRedirectUrl="/"
+                  signUpFallbackRedirectUrl="/"
+                />
+              ) : (
+                <SignUp
+                  appearance={clerkAppearance}
+                  routing="virtual"
+                  fallbackRedirectUrl="/"
+                  signInFallbackRedirectUrl="/"
+                />
+              )}
+            </div>
           </div>
         </div>
       )}
