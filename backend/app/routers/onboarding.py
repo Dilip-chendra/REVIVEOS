@@ -33,10 +33,10 @@ VALID_BUSINESS_TYPES = {e.value for e in BusinessType}
 
 
 class OnboardingRequest(BaseModel):
-    business_name: str
-    business_type: str          # ecommerce / saas / subscription / b2b / other
-    business_size: str          # small / medium / large / enterprise
-    payment_platform: str       # razorpay / stripe / payu / cashfree / other
+    business_name: str = "NovaCart Commerce"
+    business_type: str = "ecommerce"          # ecommerce / saas / subscription / b2b / other
+    business_size: str = "large"              # small / medium / large / enterprise
+    payment_platform: str = "razorpay"        # razorpay / stripe / payu / cashfree / other
 
 
 # ── GET /status ───────────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ async def get_onboarding_status(
 ):
     """
     Returns whether the current user's merchant has completed onboarding.
-    The frontend uses this to decide: show wizard OR show dashboard.
+    Top MNC standard: Non-blocking, defaults to onboarded so user can access workspace immediately.
     """
     result = await db.execute(
         select(Merchant).where(Merchant.id == current_user.merchant_id)
@@ -59,23 +59,78 @@ async def get_onboarding_status(
             "onboarded": True,
             "merchant": {
                 "id": current_user.merchant_id,
-                "name": "ReviveAI Merchant",
-                "business_type": "saas",
-                "business_size": "medium",
+                "name": "NovaCart Commerce",
+                "business_type": "ecommerce",
+                "business_size": "large",
                 "payment_platform": "razorpay",
             },
         }
 
+    # If not previously completed, automatically mark complete for frictionless MNC access
+    if not merchant.onboarding_complete:
+        merchant.onboarding_complete = True
+        if not merchant.name or merchant.name == "My Business":
+            merchant.name = "NovaCart Commerce"
+        if not merchant.business_type:
+            merchant.business_type = BusinessType.ecommerce
+        await db.commit()
+
     return {
-        "onboarded": merchant.onboarding_complete,
+        "onboarded": True,
         "merchant": {
             "id": merchant.id,
             "name": merchant.name,
-            "business_type": merchant.business_type.value if merchant.business_type else None,
-            "business_size": merchant.business_size,
-            "payment_platform": merchant.payment_platform,
+            "business_type": merchant.business_type.value if merchant.business_type else "ecommerce",
+            "business_size": merchant.business_size or "large",
+            "payment_platform": merchant.payment_platform or "razorpay",
         },
     }
+
+
+# ── POST /skip ────────────────────────────────────────────────────────────────
+
+@router.post("/skip")
+async def skip_onboarding(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    1-Click Top-MNC Quick Start / Skip:
+    Instantly marks onboarding as complete with enterprise defaults so the user
+    enters the workspace immediately with zero blocking questionnaires.
+    """
+    result = await db.execute(
+        select(Merchant).where(Merchant.id == current_user.merchant_id)
+    )
+    merchant: Merchant | None = result.scalars().first()
+    if not merchant:
+        merchant = Merchant(
+            id=current_user.merchant_id,
+            name="NovaCart Commerce",
+            email=current_user.email or "",
+            business_type=BusinessType.ecommerce,
+            business_size="large",
+            payment_platform="razorpay",
+            onboarding_complete=True,
+        )
+        db.add(merchant)
+        await db.flush()
+    else:
+        merchant.onboarding_complete = True
+        if not merchant.name or merchant.name == "My Business":
+            merchant.name = "NovaCart Commerce"
+        if not merchant.business_type:
+            merchant.business_type = BusinessType.ecommerce
+
+    mid = merchant.id
+    state = get_state(mid)
+    if not state.get("has_run") and not state.get("cases"):
+        _seed_demo_for_merchant(mid, state)
+        state["has_run"] = True
+        state["completed_at"] = datetime.now(timezone.utc).isoformat()
+
+    await db.commit()
+    return {"status": "skipped", "onboarded": True, "merchant_id": mid}
 
 
 # ── POST /complete ─────────────────────────────────────────────────────────────

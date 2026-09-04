@@ -195,14 +195,17 @@ def _verify_clerk_token(request: Request) -> dict:
 
 async def _create_fresh_merchant(db: AsyncSession) -> Merchant:
     """
-    Create a completely blank Merchant for a new user.
-    onboarding_complete = False so the frontend shows the onboarding wizard.
+    Create a fresh Merchant for a new user with institutional defaults.
+    Top MNC pattern: Frictionless onboarding with sensible enterprise defaults,
+    so the user can explore the full workspace immediately without blocking questionnaires.
     """
     merchant = Merchant(
-        name="My Business",
+        name="NovaCart Commerce",
         email="",
-        business_type=BusinessType.other,
-        onboarding_complete=False,
+        business_type=BusinessType.ecommerce,
+        business_size="large",
+        payment_platform="razorpay",
+        onboarding_complete=True,
     )
     db.add(merchant)
     await db.flush()  # get the generated ID without committing

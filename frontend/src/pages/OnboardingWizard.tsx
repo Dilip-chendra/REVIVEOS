@@ -16,7 +16,7 @@ import {
   Sparkles,
   Lock,
 } from "lucide-react";
-import { completeOnboarding } from "../api/client";
+import { completeOnboarding, skipOnboarding } from "../api/client";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface WizardData {
@@ -154,27 +154,62 @@ const slide = {
 
 export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   const [step, setStep] = useState<1 | 2 | 3 | "creating" | "done">(1);
+  // Top MNC institutional defaults so user is never faced with empty disabled inputs
   const [data, setData] = useState<WizardData>({
-    business_name: "",
-    business_type: "",
-    business_size: "",
-    payment_platform: "",
+    business_name: "NovaCart Commerce",
+    business_type: "ecommerce",
+    business_size: "large",
+    payment_platform: "razorpay",
   });
   const [error, setError] = useState("");
 
   const update = (key: keyof WizardData, value: string) =>
     setData((d) => ({ ...d, [key]: value }));
 
+  // 1-Click Top MNC Quick Launch: Auto-configure defaults and enter workspace instantly
+  const handleQuickLaunch = async () => {
+    localStorage.setItem("revive_onboarded", "true");
+    setStep("creating");
+    setError("");
+    const defaultPayload: WizardData = {
+      business_name: data.business_name.trim() || "NovaCart Commerce",
+      business_type: data.business_type || "ecommerce",
+      business_size: data.business_size || "large",
+      payment_platform: data.payment_platform || "razorpay",
+    };
+    try {
+      await completeOnboarding(defaultPayload);
+    } catch (_) {
+      try {
+        await skipOnboarding();
+      } catch (__) {}
+    }
+    setStep("done");
+    setTimeout(onComplete, 700);
+  };
+
+  // Instant Skip to Workspace: Zero blocking questions
+  const handleSkip = async () => {
+    localStorage.setItem("revive_onboarded", "true");
+    try {
+      await skipOnboarding();
+    } catch (_) {}
+    onComplete();
+  };
+
   const handleComplete = async () => {
+    localStorage.setItem("revive_onboarded", "true");
     setStep("creating");
     setError("");
     try {
       await completeOnboarding(data);
       setStep("done");
-      setTimeout(onComplete, 1600);
+      setTimeout(onComplete, 1200);
     } catch (e: any) {
       console.error("Onboarding error:", e);
-      const msg = e?.response?.data?.detail || e?.message || "Failed to initialize workspace. Please try again.";
+      // Ensure user is never permanently locked out even on transient network errors
+      localStorage.setItem("revive_onboarded", "true");
+      const msg = e?.response?.data?.detail || e?.message || "Initialized workspace with enterprise defaults.";
       setError(typeof msg === "string" ? msg : JSON.stringify(msg));
       setStep(3);
     }
@@ -254,64 +289,100 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
             </div>
           </div>
 
-          {/* Stepper Progress */}
-          {typeof step === "number" && (
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              {[
-                { s: 1, label: "Profile" },
-                { s: 2, label: "Scale & Rails" },
-                { s: 3, label: "Launch" },
-              ].map(({ s, label }) => {
-                const isActive = step === s;
-                const isPassed = step > s;
-                return (
-                  <div key={s} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        padding: "4px 10px",
-                        borderRadius: "20px",
-                        background: isActive
-                          ? "rgba(59, 130, 246, 0.2)"
-                          : isPassed
-                          ? "rgba(16, 185, 129, 0.15)"
-                          : "rgba(30, 41, 59, 0.6)",
-                        border: `1px solid ${
-                          isActive
-                            ? "rgba(59, 130, 246, 0.5)"
+          {/* Stepper Progress & Top MNC Skip Control */}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {typeof step === "number" && (
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                {[
+                  { s: 1, label: "Profile" },
+                  { s: 2, label: "Scale & Rails" },
+                  { s: 3, label: "Launch" },
+                ].map(({ s, label }) => {
+                  const isActive = step === s;
+                  const isPassed = step > s;
+                  return (
+                    <div key={s} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          padding: "4px 10px",
+                          borderRadius: "20px",
+                          background: isActive
+                            ? "rgba(59, 130, 246, 0.2)"
                             : isPassed
-                            ? "rgba(16, 185, 129, 0.4)"
-                            : "rgba(51, 65, 85, 0.5)"
-                        }`,
-                        transition: "all 0.2s ease",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: "0.68rem",
-                          fontWeight: 800,
-                          color: isActive ? "#60A5FA" : isPassed ? "#34D399" : "#64748B",
+                            ? "rgba(16, 185, 129, 0.15)"
+                            : "rgba(30, 41, 59, 0.6)",
+                          border: `1px solid ${
+                            isActive
+                              ? "rgba(59, 130, 246, 0.5)"
+                              : isPassed
+                              ? "rgba(16, 185, 129, 0.4)"
+                              : "rgba(51, 65, 85, 0.5)"
+                          }`,
+                          transition: "all 0.2s ease",
                         }}
                       >
-                        {isPassed ? "✓" : s}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "0.72rem",
-                          fontWeight: 600,
-                          color: isActive ? "#F8FAFC" : isPassed ? "#CBD5E1" : "#64748B",
-                        }}
-                      >
-                        {label}
-                      </span>
+                        <span
+                          style={{
+                            fontSize: "0.68rem",
+                            fontWeight: 800,
+                            color: isActive ? "#60A5FA" : isPassed ? "#34D399" : "#64748B",
+                          }}
+                        >
+                          {isPassed ? "✓" : s}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "0.72rem",
+                            fontWeight: 600,
+                            color: isActive ? "#F8FAFC" : isPassed ? "#CBD5E1" : "#64748B",
+                          }}
+                        >
+                          {label}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Top MNC Instant Skip to Workspace */}
+            <button
+              type="button"
+              onClick={handleSkip}
+              style={{
+                background: "rgba(30, 41, 59, 0.7)",
+                border: "1px solid rgba(148, 163, 184, 0.3)",
+                borderRadius: "20px",
+                padding: "4px 12px",
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                color: "#94A3B8",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+                transition: "all 0.15s ease",
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "#F8FAFC";
+                e.currentTarget.style.borderColor = "rgba(59, 130, 246, 0.6)";
+                e.currentTarget.style.background = "rgba(59, 130, 246, 0.2)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "#94A3B8";
+                e.currentTarget.style.borderColor = "rgba(148, 163, 184, 0.3)";
+                e.currentTarget.style.background = "rgba(30, 41, 59, 0.7)";
+              }}
+            >
+              <span>Skip to Workspace</span>
+              <ArrowRight size={12} />
+            </button>
+          </div>
         </div>
 
         {/* Main Card */}
@@ -359,6 +430,73 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                   <p style={{ fontSize: "0.88rem", color: "#94A3B8", margin: 0, lineHeight: 1.5 }}>
                     This parameters help ReviveOS tailor autonomous recovery policies, threshold guardrails, and customer communication tone.
                   </p>
+                </div>
+
+                {/* ── Top MNC 1-Click Quick Launch Banner ── */}
+                <div
+                  style={{
+                    marginBottom: "22px",
+                    padding: "14px 16px",
+                    background: "linear-gradient(135deg, rgba(37, 99, 235, 0.16) 0%, rgba(15, 23, 42, 0.8) 100%)",
+                    border: "1px solid rgba(59, 130, 246, 0.35)",
+                    borderRadius: "14px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "14px",
+                    boxShadow: "0 4px 18px rgba(0, 0, 0, 0.25)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div
+                      style={{
+                        width: "34px",
+                        height: "34px",
+                        borderRadius: "10px",
+                        background: "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        boxShadow: "0 0 12px rgba(37, 99, 235, 0.5)",
+                      }}
+                    >
+                      <Sparkles size={18} color="#FFFFFF" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "#F8FAFC", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span>Top MNC Instant Quick Launch</span>
+                        <span style={{ fontSize: "0.65rem", padding: "1px 6px", borderRadius: "4px", background: "rgba(16, 185, 129, 0.2)", color: "#34D399", fontWeight: 700 }}>
+                          RECOMMENDED
+                        </span>
+                      </div>
+                      <div style={{ fontSize: "0.74rem", color: "#94A3B8", marginTop: "2px" }}>
+                        Pre-configure institutional enterprise defaults and explore the workspace immediately
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleQuickLaunch}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: "10px",
+                      background: "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
+                      color: "#FFFFFF",
+                      border: "none",
+                      fontSize: "0.8rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      boxShadow: "0 4px 14px rgba(37, 99, 235, 0.4)",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <span>⚡ Quick Launch</span>
+                  </button>
                 </div>
 
                 {/* Business Name Field */}
@@ -568,6 +706,24 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                   <span>Continue to Volume & Rails</span>
                   <ArrowRight size={16} />
                 </button>
+
+                <div style={{ marginTop: "12px", textAlign: "center" }}>
+                  <button
+                    type="button"
+                    onClick={handleSkip}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "#64748B",
+                      fontSize: "0.78rem",
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                      textUnderlineOffset: "3px",
+                    }}
+                  >
+                    Skip setup and explore workspace directly
+                  </button>
+                </div>
               </motion.div>
             )}
 
@@ -782,6 +938,24 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                     <ArrowRight size={16} />
                   </button>
                 </div>
+
+                <div style={{ marginTop: "12px", textAlign: "center" }}>
+                  <button
+                    type="button"
+                    onClick={handleSkip}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "#64748B",
+                      fontSize: "0.78rem",
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                      textUnderlineOffset: "3px",
+                    }}
+                  >
+                    Skip setup and explore workspace directly
+                  </button>
+                </div>
               </motion.div>
             )}
 
@@ -972,6 +1146,24 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                   >
                     <span>Launch ReviveOS Workspace</span>
                     <CheckCircle2 size={18} />
+                  </button>
+                </div>
+
+                <div style={{ marginTop: "14px", textAlign: "center" }}>
+                  <button
+                    type="button"
+                    onClick={handleSkip}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "#64748B",
+                      fontSize: "0.78rem",
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                      textUnderlineOffset: "3px",
+                    }}
+                  >
+                    Skip setup and explore workspace directly
                   </button>
                 </div>
               </motion.div>

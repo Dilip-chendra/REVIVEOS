@@ -298,6 +298,7 @@ export const callMcpTool = (body: { tool_name: string; arguments: Record<string,
 // ── Onboarding & Merchant ─────────────────────────────────────────────────────
 export const getOnboardingStatus = () => api.get('/onboarding/status').then(r => r.data);
 export const completeOnboarding  = (body: any) => api.post('/onboarding/complete', body).then(r => r.data);
+export const skipOnboarding      = () => api.post('/onboarding/skip').then(r => r.data);
 export const getMyMerchant       = () => api.get('/merchant/me').then(r => r.data);
 export const updateMyMerchant    = (body: Record<string, string>) => api.patch('/merchant/me', body).then(r => r.data);
 export const getControlsConfig   = () => api.get('/controls/config').then(r => r.data);

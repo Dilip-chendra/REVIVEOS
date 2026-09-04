@@ -628,47 +628,75 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
 }
 
 function AuthenticatedApp({ onExitDemo }: { onExitDemo?: () => void }) {
-  const [onboarded, setOnboarded] = useState<boolean | null>(null);
+  // Top MNC standard: Instant entry, never block workspace with a questionnaire.
+  const [onboarded, setOnboarded] = useState<boolean>(() => {
+    // If completed/skipped previously, or session active, allow immediate access
+    return (
+      localStorage.getItem("revive_onboarded") === "true" ||
+      localStorage.getItem("revive_onboarding_skipped") === "true"
+    );
+  });
 
   useEffect(() => {
+    // If already marked onboarded locally, background verify with backend
+    if (localStorage.getItem("revive_onboarded") === "true") {
+      getOnboardingStatus().catch(() => {});
+      return;
+    }
+
     getOnboardingStatus()
-      .then((d: { onboarded: boolean }) => setOnboarded(d?.onboarded ?? true))
-      .catch(() => setOnboarded(true));
+      .then((d: { onboarded: boolean }) => {
+        if (d?.onboarded) {
+          localStorage.setItem("revive_onboarded", "true");
+          setOnboarded(true);
+        } else {
+          // If fresh user who has never onboarded, show wizard
+          setOnboarded(false);
+        }
+      })
+      .catch(() => {
+        // Fallback for offline or resilient access: drop directly into dashboard
+        localStorage.setItem("revive_onboarded", "true");
+        setOnboarded(true);
+      });
   }, []);
 
-  if (onboarded === null) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "var(--bg-base)", gap: 6 }}>
-        {[0, 1, 2].map((i) => (
-          <motion.div
-            key={i}
-            style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent)" }}
-            animate={{ opacity: [0.2, 1, 0.2] }}
-            transition={{ duration: 1.2, delay: i * 0.2, repeat: Infinity }}
-          />
-        ))}
-      </div>
-    );
-  }
+  const handleComplete = () => {
+    localStorage.setItem("revive_onboarded", "true");
+    setOnboarded(true);
+  };
 
-  if (!onboarded) return <OnboardingWizard onComplete={() => setOnboarded(true)} />;
+  const isExplicitWizard = typeof window !== "undefined" && window.location.search.includes("wizard=true");
+
+  if (!onboarded || isExplicitWizard) {
+    return <OnboardingWizard onComplete={handleComplete} />;
+  }
 
   return <AppLayout onExitDemo={onExitDemo} />;
 }
 
 export default function App() {
-  const [isDemo, setIsDemo] = useState<boolean>(() => {
-    return localStorage.getItem("revive_demo_mode") === "true";
+  const [hasEnteredWorkspace, setHasEnteredWorkspace] = useState<boolean>(() => {
+    return (
+      localStorage.getItem("revive_session_active") === "true" ||
+      localStorage.getItem("revive_demo_mode") === "true" ||
+      localStorage.getItem("revive_app_mode") === "real" ||
+      localStorage.getItem("revive_app_mode") === "demo"
+    );
   });
 
-  const handleEnterDemo = () => {
+  const handleEnterWorkspace = () => {
+    localStorage.setItem("revive_session_active", "true");
     localStorage.setItem("revive_demo_mode", "true");
-    setIsDemo(true);
+    localStorage.setItem("revive_onboarded", "true");
+    setHasEnteredWorkspace(true);
   };
 
-  const handleExitDemo = () => {
+  const handleExitWorkspace = () => {
+    localStorage.removeItem("revive_session_active");
     localStorage.removeItem("revive_demo_mode");
-    setIsDemo(false);
+    localStorage.removeItem("revive_onboarded");
+    setHasEnteredWorkspace(false);
   };
 
   return (
@@ -676,15 +704,15 @@ export default function App() {
       <BrowserRouter>
         <SignedIn>
           {/* Real Authenticated ReviveOS Workspace (Clerk verified) */}
-          <AuthenticatedApp onExitDemo={isDemo ? handleExitDemo : undefined} />
+          <AuthenticatedApp onExitDemo={hasEnteredWorkspace ? handleExitWorkspace : undefined} />
         </SignedIn>
         <SignedOut>
-          {isDemo ? (
-            /* Synthetic NovaCart Evaluation Universe (explicit demo sandbox) */
-            <AuthenticatedApp onExitDemo={handleExitDemo} />
+          {hasEnteredWorkspace ? (
+            /* Synthetic NovaCart Evaluation Universe or Real Test Sandbox */
+            <AuthenticatedApp onExitDemo={handleExitWorkspace} />
           ) : (
             /* Public Landing Page & Clerk Auth Gateway */
-            <Landing onEnterDemo={handleEnterDemo} />
+            <Landing onEnterDemo={handleEnterWorkspace} />
           )}
         </SignedOut>
       </BrowserRouter>
