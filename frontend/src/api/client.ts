@@ -320,4 +320,6 @@ export const skipOnboarding      = () => api.post('/onboarding/skip').then(r => 
 export const getMyMerchant       = () => api.get('/merchant/me').then(r => r.data);
 export const updateMyMerchant    = (body: Record<string, string>) => api.patch('/merchant/me', body).then(r => r.data);
 export const getControlsConfig   = () => api.get('/controls/config').then(r => r.data);
-export const getSystemHealth     = () => api.get('/health').then(r => r.data);
+export const getSystemHealth     = () => api.get('/health').then(r => r.data);
+export const simulateToctouRace  = (body?: { payment_id?: string; customer_id?: string; amount_inr?: number; inject_race_condition?: boolean }) =>
+  api.post('/security/toctou/simulate', body || { payment_id: 'pay_DEMO_9821', customer_id: 'CUST-9821', amount_inr: 5000, inject_race_condition: true }).then(r => r.data);

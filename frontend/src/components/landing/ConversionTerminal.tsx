@@ -10,7 +10,7 @@ export const ConversionTerminal: React.FC<{ onLaunchSandbox: () => void; onConne
 
   const runCurlSimulation = () => {
     setIsExecuting(true);
-    setTerminalOutput("Connecting to ReviveOS Economic Arbitration Node [127.0.0.1:8000]...\n");
+    setTerminalOutput("Connecting to ReviveOS Economic Arbitration Node [mesh.reviveos.internal]...\n");
     setTimeout(() => {
       setTerminalOutput((prev) => prev + "POST /api/v1/recover/evaluate HTTP/1.1\nAuthorization: Bearer rzp_test_TVw...\n\n[+] Ingested 3 agent bids for CUST-9821\n[+] Calculated Causal Lift: tau = 0.78\n[+] Net Incremental Contribution: +Rs 1,947.22\n[+] Verdict: AUTHORIZE SubscriptionAgent (Smart Retry Mandate)\n[+] Issued SHA-256 Action Contract: e3b0c44298fc1c14...\n[+] Dispatched to Razorpay Rail: HTTP 200 OK\n\n[SUCCESS] 1 Customer -> 1 Decision Locked. Margin Leakage Prevented: Rs 750.00");
       setIsExecuting(false);

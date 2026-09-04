@@ -8,7 +8,7 @@ import {
 import {
   connectRazorpay, testRazorpayConnection,
   getRazorpayStatus, disconnectRazorpay, switchEnvironment,
-  runRazorpayIntegrationTest
+  runRazorpayIntegrationTest, API_BASE_URL
 } from "../api/client";
 import RazorpayLogo from "./common/RazorpayLogo";
 
@@ -70,7 +70,7 @@ export default function RazorpayConnectionModal({ isOpen, onClose, onSuccess }: 
     if (!e.response) {
       return {
         title: "REVIVEAI BACKEND UNAVAILABLE",
-        detail: "The browser could not reach the ReviveOS FastAPI server at http://127.0.0.1:8000. Verify the backend process is running.",
+        detail: `The browser could not reach the ReviveOS backend server at ${API_BASE_URL || "the configured endpoint"}. Verify the backend process is running.`,
         stage: "backend",
       };
     }
