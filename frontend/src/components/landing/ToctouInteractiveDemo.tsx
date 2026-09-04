@@ -58,7 +58,7 @@ export const ToctouInteractiveDemo: React.FC = () => {
           What if the Customer Pays While the AI is Preparing a Retry?
         </h2>
         <p style={{ fontSize: "1rem", color: "#8E9BB0", maxWidth: "640px", margin: "0 auto", lineHeight: 1.6 }}>
-          Time-of-Check to Time-of-Use (TOCTOU) race conditions are one of the most dangerous failure modes in autonomous payment recovery. Click through the simulation.
+          Time-of-Check to Time-of-Use (TOCTOU) race conditions are one of the most critical concurrency challenges in automated payment recovery. Click through the simulation.
         </p>
       </div>
 

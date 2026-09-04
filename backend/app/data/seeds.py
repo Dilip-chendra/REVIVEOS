@@ -561,7 +561,7 @@ DEMO_SCENARIOS: dict[str, dict] = {
             },
             {
                 "id": "B",
-                "label": "Strategy B: Retry Same Card (Dangerous — BLOCKED)",
+                "label": "Strategy B: Retry Same Card (Policy Blocked — Card Fatigue Prevention)",
                 "description": "Blindly retry the expired card. This WILL fail every time and triggers Visa/Mastercard penalty flags for the merchant. DO NOT DO THIS.",
                 "probability": 0.0,
                 "risk": "Extreme",
@@ -689,7 +689,7 @@ DEMO_SCENARIOS: dict[str, dict] = {
             },
             {
                 "id": "B",
-                "label": "Strategy B: Retry Again (Dangerous — BLOCKED by Policy Gate)",
+                "label": "Strategy B: Retry Again (Policy Blocked — Safety Ceiling Enforced)",
                 "description": "Attempt a 4th retry. This will: (1) fail with 94% certainty, (2) incur API fees, (3) trigger Visa/Mastercard merchant penalty flags affecting ALL future transactions.",
                 "probability": 0.06,
                 "risk": "Extreme — triggers merchant penalty",

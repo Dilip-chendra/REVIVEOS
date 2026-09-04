@@ -179,7 +179,7 @@ const STRATEGY_SCENARIOS = {
         prob: 0,
         risk: "Extreme",
         chosen: false,
-        tag: "POLICY BLOCKED — Dangerous",
+        tag: "POLICY SAFEGUARD — Card Fatigue Prevented",
       },
       {
         id: "C",
