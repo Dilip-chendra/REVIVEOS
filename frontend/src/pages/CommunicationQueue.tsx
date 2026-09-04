@@ -17,6 +17,7 @@ import {
   ShieldAlert
 } from "lucide-react";
 import { api } from "../api/client";
+import { useAppMode } from "../context/AppModeContext";
 
 interface CommRecord {
   id: string;
@@ -148,12 +149,13 @@ const DEFAULT_TIMELINE: TimelineEvent[] = [
 ];
 
 export default function CommunicationQueue() {
-  const [comms, setComms] = useState<CommRecord[]>(DEFAULT_DEMO_COMMS);
+  const { isRealMode } = useAppMode();
+  const [comms, setComms] = useState<CommRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [channelFilter, setChannelFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [selectedCaseId, setSelectedCaseId] = useState<string>("OPP-002");
-  const [timeline, setTimeline] = useState<TimelineEvent[]>(DEFAULT_TIMELINE);
+  const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
 
   // Dispatch modal
   const [showModal, setShowModal] = useState(false);
@@ -161,7 +163,7 @@ export default function CommunicationQueue() {
   const [targetCaseId, setTargetCaseId] = useState("OPP-002");
   const [customerName, setCustomerName] = useState("Dilip Madagari");
   const [recipient, setRecipient] = useState("+91 7396404207");
-  const [subject, setSubject] = useState("NovaCart Pro Payment Recovery");
+  const [subject, setSubject] = useState(isRealMode ? "Payment Recovery Link" : "NovaCart Pro Payment Recovery");
   const [body, setBody] = useState("Hi Dilip, your payment of ₹2,500 is pending. Tap below to complete your payment seamlessly.");
   const [dispatching, setDispatching] = useState(false);
   const [dispatchResult, setDispatchResult] = useState<any>(null);
@@ -179,16 +181,19 @@ export default function CommunicationQueue() {
       if (statusFilter !== "ALL") params.status = statusFilter;
       const res = await api.get("/communications", { params });
       if (res.data && Array.isArray(res.data) && res.data.length > 0) {
-        // Merge fetched records with default demo records to ensure full richness
-        const apiIds = new Set(res.data.map((r: any) => r.id));
-        const combined = [...res.data, ...DEFAULT_DEMO_COMMS.filter(d => !apiIds.has(d.id))];
-        setComms(combined);
+        if (isRealMode) {
+          setComms(res.data);
+        } else {
+          const apiIds = new Set(res.data.map((r: any) => r.id));
+          const combined = [...res.data, ...DEFAULT_DEMO_COMMS.filter(d => !apiIds.has(d.id))];
+          setComms(combined);
+        }
       } else {
-        setComms(DEFAULT_DEMO_COMMS);
+        setComms(isRealMode ? [] : DEFAULT_DEMO_COMMS);
       }
     } catch (e) {
       console.error(e);
-      setComms(DEFAULT_DEMO_COMMS);
+      setComms(isRealMode ? [] : DEFAULT_DEMO_COMMS);
     } finally {
       setLoading(false);
     }
@@ -201,21 +206,21 @@ export default function CommunicationQueue() {
       if (res.data && Array.isArray(res.data) && res.data.length > 0) {
         setTimeline(res.data);
       } else {
-        setTimeline(DEFAULT_TIMELINE);
+        setTimeline(isRealMode ? [] : DEFAULT_TIMELINE);
       }
     } catch (e) {
       console.error(e);
-      setTimeline(DEFAULT_TIMELINE);
+      setTimeline(isRealMode ? [] : DEFAULT_TIMELINE);
     }
   };
 
   useEffect(() => {
     fetchComms();
-  }, [channelFilter, statusFilter]);
+  }, [channelFilter, statusFilter, isRealMode]);
 
   useEffect(() => {
     fetchTimeline(selectedCaseId);
-  }, []);
+  }, [selectedCaseId, isRealMode]);
 
   const openInspector = (record: CommRecord) => {
     setInspectRecord(record);
@@ -386,7 +391,7 @@ export default function CommunicationQueue() {
               setDispatchChannel("EMAIL");
               setRecipient("dilip.madagari@gmail.com");
               setCustomerName("Dilip Madagari");
-              setSubject("NovaCart Pro Invoice Settlement");
+              setSubject(isRealMode ? "Invoice Settlement" : "NovaCart Pro Invoice Settlement");
               setBody("Hi Dilip, your payment of ₹2,500 is pending. Tap below to complete your payment seamlessly.");
               setDispatchResult(null);
               setShowModal(true);
@@ -409,7 +414,7 @@ export default function CommunicationQueue() {
               setDispatchChannel("WHATSAPP");
               setRecipient("+91 7396404207");
               setCustomerName("Dilip Madagari");
-              setSubject("NovaCart Pro Payment Recovery");
+              setSubject(isRealMode ? "Payment Recovery" : "NovaCart Pro Payment Recovery");
               setBody("Hi Dilip, your payment of ₹2,500 is pending. Tap below to complete your payment seamlessly.");
               setDispatchResult(null);
               setShowModal(true);
@@ -443,9 +448,9 @@ export default function CommunicationQueue() {
               <Send size={16} color="#60A5FA" />
             </div>
           </div>
-          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#F8FAFC", letterSpacing: "-0.03em" }}>{1280 + comms.length}</div>
+          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#F8FAFC", letterSpacing: "-0.03em" }}>{isRealMode ? comms.length : 1280 + comms.length}</div>
           <div style={{ fontSize: "0.75rem", color: "#60A5FA", marginTop: 4 }}>
-            <span>68% WhatsApp · 24% Email · 8% Link</span>
+            <span>{isRealMode ? (comms.length > 0 ? `${comms.length} Live Messages` : "Razorpay Live Rails Connected") : "68% WhatsApp · 24% Email · 8% Link"}</span>
           </div>
         </div>
 
@@ -460,9 +465,9 @@ export default function CommunicationQueue() {
               <CheckCircle2 size={16} color="#34D399" />
             </div>
           </div>
-          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#34D399", letterSpacing: "-0.03em" }}>99.4%</div>
+          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#34D399", letterSpacing: "-0.03em" }}>{isRealMode ? (comms.length > 0 ? "100%" : "—") : "99.4%"}</div>
           <div style={{ fontSize: "0.75rem", color: "#A7F3D0", marginTop: 4 }}>
-            Average Read Latency: 4.2 minutes
+            {isRealMode ? (comms.length > 0 ? "Real Delivery Webhooks Active" : "Awaiting first live dispatch") : "Average Read Latency: 4.2 minutes"}
           </div>
         </div>
 
@@ -477,9 +482,9 @@ export default function CommunicationQueue() {
               <Zap size={16} color="#FBBF24" />
             </div>
           </div>
-          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#FBBF24", letterSpacing: "-0.03em" }}>₹3,84,500</div>
+          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#FBBF24", letterSpacing: "-0.03em" }}>{isRealMode ? `₹${comms.filter(c => c.status === "PAID").reduce((s, c) => s + (c.expected_nic_inr || 0), 0).toLocaleString("en-IN")}` : "₹3,84,500"}</div>
           <div style={{ fontSize: "0.75rem", color: "#FDE68A", marginTop: 4 }}>
-            Net Recovered Capital: ₹3,21,800
+            {isRealMode ? "Net Incremental Live Capital" : "Net Recovered Capital: ₹3,21,800"}
           </div>
         </div>
 
@@ -494,7 +499,7 @@ export default function CommunicationQueue() {
               <ShieldCheck size={16} color="#A78BFA" />
             </div>
           </div>
-          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#A78BFA", letterSpacing: "-0.03em" }}>142</div>
+          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#A78BFA", letterSpacing: "-0.03em" }}>{isRealMode ? "0" : "142"}</div>
           <div style={{ fontSize: "0.75rem", color: "#DDD6FE", marginTop: 4 }}>
             Fatigue & Spam Limits Enforced
           </div>
@@ -582,7 +587,22 @@ export default function CommunicationQueue() {
               </tr>
             </thead>
             <tbody>
-              {filteredComms.map((c) => {
+              {filteredComms.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: "48px 24px", textAlign: "center", color: "#94A3B8" }}>
+                    <ShieldCheck size={32} color={isRealMode ? "#10B981" : "#34D399"} style={{ margin: "0 auto 12px" }} />
+                    <div style={{ fontWeight: 700, fontSize: "1rem", color: "#F8FAFC", marginBottom: 4 }}>
+                      {isRealMode ? "Real Mode: Communication Ledger Empty" : "No Communications Recorded"}
+                    </div>
+                    <div style={{ fontSize: "0.8125rem", maxWidth: 480, margin: "0 auto", lineHeight: 1.5 }}>
+                      {isRealMode
+                        ? "No customer outreach, WhatsApp recovery links, or SMS notifications have been dispatched on connected Razorpay rails yet. Real dispatches with HMAC cryptographic signatures will appear here."
+                        : "No communication records match the selected channel or status filters."}
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredComms.map((c) => {
                 const isWa = c.channel === "WHATSAPP";
                 const isEm = c.channel === "EMAIL";
                 const isPaid = c.status === "PAID";
@@ -732,7 +752,7 @@ export default function CommunicationQueue() {
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>

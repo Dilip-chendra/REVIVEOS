@@ -226,7 +226,33 @@ class RecoveryConversionService:
     def get_all_outcomes(self) -> List[Dict[str, Any]]:
         return [o.to_dict() for o in self._outcomes_ledger.values()]
 
-    def get_conversion_funnel(self) -> Dict[str, Any]:
+    def get_conversion_funnel(self, merchant_id: str = "default") -> Dict[str, Any]:
+        from app.state import get_state
+        state = get_state(merchant_id)
+        env = state.get("active_environment", "DEMO")
+        is_real = env in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL")
+
+        if is_real:
+            target_key = "provider_test_cases" if env in ("RAZORPAY_TEST", "REAL") else "provider_live_cases"
+            raw_cases = state.get(target_key, [])
+            total_amt = sum(c.get("amount_inr", 0) for c in raw_cases)
+            rec_cases = [c for c in raw_cases if c.get("status") == "recovered"]
+            rec_amt = sum(c.get("amount_inr", 0) for c in rec_cases)
+
+            return {
+                "funnel_stages": [
+                    {"stage": "1. Revenue Detected", "count": len(raw_cases), "amount_inr": total_amt, "provenance": "RAZORPAY_LIVE"},
+                    {"stage": "2. Deterministic Qualified", "count": len([c for c in raw_cases if c.get("recovery_probability", 0) > 0.3]), "amount_inr": sum(c.get("amount_inr", 0) for c in raw_cases if c.get("recovery_probability", 0) > 0.3), "provenance": "REVIVEAI_DERIVED"},
+                    {"stage": "3. Intervention Dispatched", "count": len([c for c in raw_cases if c.get("status") in ("in_progress", "recovered")]), "amount_inr": sum(c.get("amount_inr", 0) for c in raw_cases if c.get("status") in ("in_progress", "recovered")), "provenance": "REVIVEAI_DERIVED"},
+                    {"stage": "4. Customer Engaged", "count": len([c for c in raw_cases if c.get("customer_engaged")]), "amount_inr": sum(c.get("amount_inr", 0) for c in raw_cases if c.get("customer_engaged")), "provenance": "PROVIDER_DERIVED"},
+                    {"stage": "5. Payment Confirmed & Reconciled", "count": len(rec_cases), "amount_inr": rec_amt, "provenance": "PROVIDER_DERIVED"},
+                ],
+                "total_recovered_revenue_inr": rec_amt,
+                "total_intervention_cost_inr": len(raw_cases) * 4.0 if raw_cases else 0.0,
+                "net_incremental_contribution_inr": max(0.0, rec_amt - (len(raw_cases) * 4.0)),
+                "recovery_roi_multiple": round(rec_amt / max(1.0, len(raw_cases) * 4.0), 1) if rec_amt > 0 else 0.0,
+            }
+
         outcomes = list(self._outcomes_ledger.values())
         total_detected = len(outcomes) + 497 # benchmark cohort
         total_qualified = len(outcomes) + 217

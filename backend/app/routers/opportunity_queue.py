@@ -22,7 +22,12 @@ async def get_opportunity_queue(
 ):
     mid = current_user.merchant_id
     state = get_state(mid)
-    cases = state.get("cases", [])
+    env = state.get("active_environment", "DEMO")
+    if env in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL"):
+        target_key = "provider_test_cases" if env in ("RAZORPAY_TEST", "REAL") else "provider_live_cases"
+        cases = state.get(target_key, [])
+    else:
+        cases = state.get("demo_cases", state.get("cases", []))
 
     scored_items = []
     for c in cases:

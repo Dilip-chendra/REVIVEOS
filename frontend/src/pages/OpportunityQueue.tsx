@@ -166,10 +166,10 @@ export default function OpportunityQueue() {
   const { currentMode } = useAppMode();
   const [queueData, setQueueData] = useState<OpportunityItem[]>([]);
   const [totalStats, setTotalStats] = useState({
-    total_count: 5,
-    total_at_risk_inr: 982398,
-    total_expected_incremental_inr: 609660.59,
-    total_expected_nic_inr: 609520.59,
+    total_count: 0,
+    total_at_risk_inr: 0,
+    total_expected_incremental_inr: 0,
+    total_expected_nic_inr: 0,
     total_recovered_inr: 0,
   });
   const [selectedUrgency, setSelectedUrgency] = useState<string>("ALL");
@@ -227,12 +227,21 @@ export default function OpportunityQueue() {
       if (res?.queue && res.queue.length > 0) {
         setQueueData(res.queue);
         setTotalStats(prev => ({
-          total_count: res.total_count || res.queue.length,
-          total_at_risk_inr: res.total_at_risk_inr || 1144898,
-          total_expected_incremental_inr: res.total_expected_incremental_inr || 609660.59,
-          total_expected_nic_inr: res.total_expected_nic_inr || 609520.59,
+          total_count: res.total_count ?? res.queue.length,
+          total_at_risk_inr: res.total_at_risk_inr ?? 0,
+          total_expected_incremental_inr: res.total_expected_incremental_inr ?? 0,
+          total_expected_nic_inr: res.total_expected_nic_inr ?? 0,
           total_recovered_inr: prev.total_recovered_inr,
         }));
+      } else if (currentMode === "real") {
+        setQueueData([]);
+        setTotalStats({
+          total_count: 0,
+          total_at_risk_inr: 0,
+          total_expected_incremental_inr: 0,
+          total_expected_nic_inr: 0,
+          total_recovered_inr: 0,
+        });
       } else {
         setQueueData(DEFAULT_QUEUE_DATA);
         setTotalStats(prev => ({
@@ -244,15 +253,26 @@ export default function OpportunityQueue() {
         }));
       }
     } catch (e) {
-      console.warn("Using default opportunity queue for demo:", e);
-      setQueueData(DEFAULT_QUEUE_DATA);
-      setTotalStats(prev => ({
-        total_count: 5,
-        total_at_risk_inr: 982398,
-        total_expected_incremental_inr: 609660.59,
-        total_expected_nic_inr: 609520.59,
-        total_recovered_inr: prev.total_recovered_inr,
-      }));
+      if (currentMode === "real") {
+        setQueueData([]);
+        setTotalStats({
+          total_count: 0,
+          total_at_risk_inr: 0,
+          total_expected_incremental_inr: 0,
+          total_expected_nic_inr: 0,
+          total_recovered_inr: 0,
+        });
+      } else {
+        console.warn("Using default opportunity queue for demo:", e);
+        setQueueData(DEFAULT_QUEUE_DATA);
+        setTotalStats(prev => ({
+          total_count: 5,
+          total_at_risk_inr: 982398,
+          total_expected_incremental_inr: 609660.59,
+          total_expected_nic_inr: 609520.59,
+          total_recovered_inr: prev.total_recovered_inr,
+        }));
+      }
     } finally {
       setLoading(false);
     }
@@ -565,13 +585,15 @@ export default function OpportunityQueue() {
       {/* Opportunities List */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {queueData.length === 0 && !loading && (
-          <div style={{ padding: "48px 24px", textAlign: "center", background: "#0F172A", borderRadius: 10, border: "1px solid rgba(148, 163, 184, 0.15)" }}>
-            <ShieldCheck size={36} color="#34D399" style={{ margin: "0 auto 12px" }} />
+          <div style={{ padding: "48px 24px", textAlign: "center", background: "#0F172A", borderRadius: 10, border: `1px solid ${currentMode === "real" ? "rgba(16, 185, 129, 0.25)" : "rgba(148, 163, 184, 0.15)"}` }}>
+            <ShieldCheck size={36} color={currentMode === "real" ? "#10B981" : "#34D399"} style={{ margin: "0 auto 12px" }} />
             <h4 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#F8FAFC" }}>
-              0 Active Opportunities in Current Filter
+              {currentMode === "real" ? "Real Mode: 0 Active Recovery Opportunities" : "0 Active Opportunities in Current Filter"}
             </h4>
-            <p style={{ margin: "0 auto", maxWidth: 460, fontSize: 13, color: "#94A3B8" }}>
-              No failed payments, checkout drops, or subscription retry events match the selected criteria.
+            <p style={{ margin: "0 auto", maxWidth: 480, fontSize: 13, color: "#94A3B8", lineHeight: 1.5 }}>
+              {currentMode === "real"
+                ? "No failed payments, checkout drops, or subscription lapses have occurred on connected Razorpay rails yet. Zero synthetic fallback is active to preserve accounting integrity. Real decline events will be evaluated and ranked here automatically."
+                : "No failed payments, checkout drops, or subscription retry events match the selected criteria."}
             </p>
           </div>
         )}

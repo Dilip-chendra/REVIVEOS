@@ -120,7 +120,9 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
 
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const currentEnv = razorpayStatus?.active_environment || "DEMO";
+  const currentEnv = isRealMode
+    ? (razorpayStatus?.active_environment && razorpayStatus.active_environment !== "DEMO" ? razorpayStatus.active_environment : "RAZORPAY_TEST")
+    : "DEMO";
   const isConnected = razorpayStatus?.is_configured;
 
   return (
@@ -263,8 +265,8 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                   padding: "4px 12px",
                   borderRadius: "7px",
                   border: "none",
-                  background: isRealMode ? "rgba(59, 130, 246, 0.22)" : "transparent",
-                  color: isRealMode ? "#60A5FA" : "#94A3B8",
+                  background: isRealMode ? "rgba(16, 185, 129, 0.22)" : "transparent",
+                  color: isRealMode ? "#34D399" : "#94A3B8",
                   fontWeight: isRealMode ? 800 : 600,
                   fontSize: "0.75rem",
                   cursor: "pointer",
@@ -275,7 +277,7 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                   whiteSpace: "nowrap",
                 }}
               >
-                <span style={{ fontSize: "0.65rem", color: isRealMode ? "#60A5FA" : "#64748B" }}>
+                <span style={{ fontSize: "0.65rem", color: isRealMode ? "#10B981" : "#64748B" }}>
                   {isRealMode ? "●" : "○"}
                 </span>
                 <span>Real Mode</span>
@@ -561,6 +563,7 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                   <Route path="/opportunities"         element={<OpportunityQueue />} />
                   <Route path="/communications"        element={<CommunicationQueue />} />
                   <Route path="/automation"            element={<AutonomyCenter />} />
+                  <Route path="/autonomy"              element={<AutonomyCenter />} />
                   <Route path="/payouts"               element={<PayoutControlCenter />} />
                   <Route path="/collision-lab"         element={<CollisionLab />} />
                   <Route path="/toctou"                element={<ToctouSimulator />} />

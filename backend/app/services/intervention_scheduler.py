@@ -122,7 +122,7 @@ class InterventionScheduler:
                 expires_at=(now + timedelta(hours=24)).isoformat(),
                 reason="Scheduled optimal open rate window (11:30 AM IST). Nonce active.",
                 policy_version="2026.08.PROD",
-                is_simulated=False,
+                is_simulated=True,
                 metadata={"amount_inr": 2500},
             ),
             ScheduledAction(
@@ -143,7 +143,7 @@ class InterventionScheduler:
                 expires_at=(now + timedelta(hours=30)).isoformat(),
                 reason="Weekend bank velocity cooldown. Re-attempting on Monday morning banking cycle.",
                 policy_version="2026.08.PROD",
-                is_simulated=False,
+                is_simulated=True,
                 metadata={"amount_inr": 24999},
             ),
             ScheduledAction(
@@ -164,7 +164,7 @@ class InterventionScheduler:
                 expires_at=(now + timedelta(hours=26)).isoformat(),
                 reason="Scheduled dispatch with updated HDFC virtual account reconciliation link.",
                 policy_version="2026.08.PROD",
-                is_simulated=False,
+                is_simulated=True,
                 metadata={"amount_inr": 8500},
             ),
             ScheduledAction(
@@ -185,7 +185,7 @@ class InterventionScheduler:
                 expires_at=(now + timedelta(hours=36)).isoformat(),
                 reason="Contacted 6 hours ago. Minimum 24h inter-contact fatigue budget enforced.",
                 policy_version="2026.08.PROD",
-                is_simulated=False,
+                is_simulated=True,
                 metadata={"amount_inr": 1800},
             ),
         ]

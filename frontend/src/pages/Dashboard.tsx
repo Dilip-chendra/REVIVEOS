@@ -697,7 +697,7 @@ export default function Dashboard() {
         const currentTotalExposure = Math.max(0, (portfolio?.total_exposure_inr ?? 0) - sessionRecoveredINR);
         const currentEligibleExposure = Math.max(0, (portfolio?.eligible_exposure_inr ?? 0) - sessionRecoveredINR);
         const currentEligibleCount = Math.max(0, (portfolio?.eligible_opportunities_count ?? 0) - executedOppIds.size);
-        const baseRecovered = portfolio?.total_recovered_inr || 1870000;
+        const baseRecovered = isRealMode ? (portfolio?.total_recovered_inr ?? 0) : (portfolio?.total_recovered_inr || 1870000);
         const currentTotalRecovered = baseRecovered + sessionRecoveredINR;
 
         return (
@@ -1128,7 +1128,7 @@ export default function Dashboard() {
                 </button>
               )}
               <button onClick={() => { localStorage.setItem("reviveai_active_environment", "DEMO"); localStorage.setItem("revive_app_mode", "demo"); window.location.reload(); }} className="btn btn-secondary" style={{ fontSize: "12px" }}>
-                Switch to Demo Universe (NovaCart)
+                Switch to Demo Mode
               </button>
             </div>
           </div>

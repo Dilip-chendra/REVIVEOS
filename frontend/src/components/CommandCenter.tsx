@@ -36,7 +36,7 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({ portfolio, isRealM
   const label = isReal ? "RAZORPAY PROVIDER" : "SIMULATION";
   const labelColor = isReal ? "#00FF66" : "#F59E0B";
 
-  const opp = portfolio?.opportunities || [];
+  const opp = portfolio?.top_opportunities || portfolio?.opportunities || [];
   const recovered = opp.filter((o: any) => o.state === "RECOVERED" || o.state === "NATURALLY_RECOVERED");
   const suppressed = opp.filter((o: any) => o.state === "ABSTAINED" || o.state === "BLOCKED");
   const totalAmount = recovered.reduce((s: number, o: any) => s + (o.amount_inr || 0), 0);

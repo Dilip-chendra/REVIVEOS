@@ -221,8 +221,8 @@ async def get_forensic_recovery_ledger():
 
 
 @router.get("/conversion-funnel")
-async def get_recovery_conversion_funnel():
-    return recovery_conversion_service.get_conversion_funnel()
+async def get_recovery_conversion_funnel(current_user: User = Depends(get_current_user)):
+    return recovery_conversion_service.get_conversion_funnel(merchant_id=current_user.merchant_id)
 
 
 @router.get("/auction/proposals")

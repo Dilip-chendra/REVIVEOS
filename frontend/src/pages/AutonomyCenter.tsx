@@ -12,6 +12,7 @@ import {
   Check
 } from "lucide-react";
 import { api } from "../api/client";
+import { useAppMode } from "../context/AppModeContext";
 
 interface AutomationStats {
   autonomy_mode: string;
@@ -110,22 +111,23 @@ const DEFAULT_DEMO_JOBS: ActionItem[] = [
 ];
 
 export default function AutonomyCenter() {
+  const { isRealMode } = useAppMode();
   const [stats, setStats] = useState<AutomationStats>({
     autonomy_mode: "ASSISTED",
     min_contact_interval_hours: 24,
     max_attempts_per_case: 3,
     allowed_hours: "09:00 - 18:00 IST",
     human_approval_ceiling_inr: 50000,
-    total_scheduled: 4,
-    due_now_count: 1,
+    total_scheduled: 0,
+    due_now_count: 0,
     executing_count: 0,
-    completed_today_count: 18,
-    skipped_by_policy_count: 11,
-    blocked_count: 4,
-    suppressed_count: 2,
-    estimated_incremental_recovery_inr: 284000,
+    completed_today_count: 0,
+    skipped_by_policy_count: 0,
+    blocked_count: 0,
+    suppressed_count: 0,
+    estimated_incremental_recovery_inr: 0,
   });
-  const [jobs, setJobs] = useState<ActionItem[]>(DEFAULT_DEMO_JOBS);
+  const [jobs, setJobs] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [, setUpdating] = useState(false);
   const [executingId, setExecutingId] = useState<string | null>(null);
@@ -144,6 +146,17 @@ export default function AutonomyCenter() {
       ]);
       if (resStats.data) {
         setStats(prev => ({ ...prev, ...resStats.data }));
+      } else if (!isRealMode) {
+        setStats(prev => ({
+          ...prev,
+          total_scheduled: 4,
+          due_now_count: 1,
+          completed_today_count: 18,
+          skipped_by_policy_count: 11,
+          blocked_count: 4,
+          suppressed_count: 2,
+          estimated_incremental_recovery_inr: 284000,
+        }));
       }
       if (resJobs.data && Array.isArray(resJobs.data) && resJobs.data.length > 0) {
         // Keep any executed statuses preserved in local state
@@ -158,11 +171,11 @@ export default function AutonomyCenter() {
           });
         });
       } else {
-        setJobs(prev => (prev.length > 0 ? prev : DEFAULT_DEMO_JOBS));
+        setJobs(isRealMode ? [] : DEFAULT_DEMO_JOBS);
       }
     } catch (e: any) {
       console.error(e);
-      setJobs(prev => (prev.length > 0 ? prev : DEFAULT_DEMO_JOBS));
+      setJobs(isRealMode ? [] : DEFAULT_DEMO_JOBS);
     } finally {
       setLoading(false);
     }
@@ -170,7 +183,7 @@ export default function AutonomyCenter() {
 
   useEffect(() => {
     fetchStatus();
-  }, []);
+  }, [isRealMode]);
 
   const setAutonomyMode = async (mode: string) => {
     try {
@@ -520,7 +533,22 @@ export default function AutonomyCenter() {
               </tr>
             </thead>
             <tbody>
-              {jobs.map((j) => {
+              {jobs.length === 0 && !loading ? (
+                <tr>
+                  <td colSpan={7} style={{ padding: "48px 24px", textAlign: "center", color: "#94A3B8" }}>
+                    <ShieldCheck size={32} color={isRealMode ? "#10B981" : "#34D399"} style={{ margin: "0 auto 12px" }} />
+                    <div style={{ fontWeight: 700, fontSize: "1rem", color: "#F8FAFC", marginBottom: 4 }}>
+                      {isRealMode ? "Real Mode: 0 Scheduled Autonomous Jobs" : "No Scheduled Interventions"}
+                    </div>
+                    <div style={{ fontSize: "0.8125rem", maxWidth: 480, margin: "0 auto", lineHeight: 1.5 }}>
+                      {isRealMode
+                        ? "Autonomous recovery cadences are active on Razorpay rails. When real transaction declines and mandate failures arrive, AI agents will evaluate optimal recovery timing windows and schedule actions here."
+                        : "All demo jobs have been executed or cancelled."}
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                jobs.map((j) => {
                 const isDue = j.status === "DUE_SOON";
                 const isCompleted = j.status === "COMPLETED";
                 const isCancelled = j.status === "CANCELLED";
@@ -635,7 +663,7 @@ export default function AutonomyCenter() {
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>

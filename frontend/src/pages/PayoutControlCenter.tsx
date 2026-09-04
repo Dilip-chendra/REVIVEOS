@@ -13,6 +13,7 @@ import {
   X
 } from "lucide-react";
 import { api } from "../api/client";
+import { useAppMode } from "../context/AppModeContext";
 
 interface PayoutRecord {
   id: string;
@@ -102,7 +103,8 @@ const DEFAULT_DEMO_PAYOUTS: PayoutRecord[] = [
 ];
 
 export default function PayoutControlCenter() {
-  const [payouts, setPayouts] = useState<PayoutRecord[]>(DEFAULT_DEMO_PAYOUTS);
+  const { isRealMode } = useAppMode();
+  const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -123,11 +125,11 @@ export default function PayoutControlCenter() {
       if (res.data && Array.isArray(res.data) && res.data.length > 0) {
         setPayouts(res.data);
       } else {
-        setPayouts(DEFAULT_DEMO_PAYOUTS);
+        setPayouts(isRealMode ? [] : DEFAULT_DEMO_PAYOUTS);
       }
     } catch (e) {
       console.error(e);
-      setPayouts(DEFAULT_DEMO_PAYOUTS);
+      setPayouts(isRealMode ? [] : DEFAULT_DEMO_PAYOUTS);
     } finally {
       setLoading(false);
     }
@@ -135,7 +137,7 @@ export default function PayoutControlCenter() {
 
   useEffect(() => {
     fetchPayouts();
-  }, []);
+  }, [isRealMode]);
 
   const handleApprove = async (id: string) => {
     try {
@@ -300,9 +302,9 @@ export default function PayoutControlCenter() {
               <CreditCard size={16} color="#60A5FA" />
             </div>
           </div>
-          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#F8FAFC", letterSpacing: "-0.03em" }}>₹1,42,500</div>
+          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#F8FAFC", letterSpacing: "-0.03em" }}>{isRealMode ? `₹${payouts.reduce((s, p) => s + (p.amount_inr || 0), 0).toLocaleString("en-IN")}` : "₹1,42,500"}</div>
           <div style={{ fontSize: "0.75rem", color: "#60A5FA", marginTop: 4 }}>
-            Across 18 governed transfers
+            {isRealMode ? `Across ${payouts.length} governed transfers` : "Across 18 governed transfers"}
           </div>
         </div>
 
@@ -317,9 +319,9 @@ export default function PayoutControlCenter() {
               <Key size={16} color="#FBBF24" />
             </div>
           </div>
-          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#FBBF24", letterSpacing: "-0.03em" }}>1 Request</div>
+          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#FBBF24", letterSpacing: "-0.03em" }}>{isRealMode ? `${payouts.filter(p => p.status === "PENDING_APPROVAL").length} Requests` : "1 Request"}</div>
           <div style={{ fontSize: "0.75rem", color: "#FDE68A", marginTop: 4 }}>
-            ₹24,000 awaiting second operator key
+            {isRealMode ? "Awaiting dual-key authorization" : "₹24,000 awaiting second operator key"}
           </div>
         </div>
 
@@ -334,9 +336,9 @@ export default function PayoutControlCenter() {
               <CheckCircle2 size={16} color="#34D399" />
             </div>
           </div>
-          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#34D399", letterSpacing: "-0.03em" }}>14 Transfers</div>
+          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#34D399", letterSpacing: "-0.03em" }}>{isRealMode ? `${payouts.filter(p => p.status === "SETTLED").length} Transfers` : "14 Transfers"}</div>
           <div style={{ fontSize: "0.75rem", color: "#A7F3D0", marginTop: 4 }}>
-            Executed in &lt; 800ms
+            {isRealMode ? "Executed via live rails" : "Executed in < 800ms"}
           </div>
         </div>
 
@@ -351,7 +353,7 @@ export default function PayoutControlCenter() {
               <Lock size={16} color="#F87171" />
             </div>
           </div>
-          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#F87171", letterSpacing: "-0.03em" }}>3 Prevented</div>
+          <div style={{ fontSize: "1.875rem", fontWeight: 900, color: "#F87171", letterSpacing: "-0.03em" }}>{isRealMode ? "0 Prevented" : "3 Prevented"}</div>
           <div style={{ fontSize: "0.75rem", color: "#FECACA", marginTop: 4 }}>
             Double-spend risk: <strong>0.00%</strong>
           </div>
@@ -447,7 +449,22 @@ export default function PayoutControlCenter() {
               </tr>
             </thead>
             <tbody>
-              {filteredPayouts.map((p) => {
+              {filteredPayouts.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ padding: "48px 24px", textAlign: "center", color: "#94A3B8" }}>
+                    <ShieldCheck size={32} color={isRealMode ? "#10B981" : "#34D399"} style={{ margin: "0 auto 12px" }} />
+                    <div style={{ fontWeight: 700, fontSize: "1rem", color: "#F8FAFC", marginBottom: 4 }}>
+                      {isRealMode ? "Real Mode: 0 Payout Actions Recorded" : "No Payout Records Found"}
+                    </div>
+                    <div style={{ fontSize: "0.8125rem", maxWidth: 480, margin: "0 auto", lineHeight: 1.5 }}>
+                      {isRealMode
+                        ? "No automated customer refunds, SLA dispute credits, or operational payouts have been requested on live rails. Payout events will appear here with policy engine authorization."
+                        : "No payout records match the selected status filter."}
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredPayouts.map((p) => {
                 const isPending = p.status === "PENDING_APPROVAL";
                 const isSettled = p.status === "SETTLED";
                 // isBlocked handled
@@ -563,7 +580,7 @@ export default function PayoutControlCenter() {
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>

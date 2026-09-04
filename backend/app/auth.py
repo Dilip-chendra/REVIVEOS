@@ -79,6 +79,8 @@ async def get_current_user(
             token = auth_header[7:]
 
     x_mode = (request.headers.get("X-Revive-Mode") or "").strip().upper()
+    env_header = (request.headers.get("X-Revive-Environment") or "").strip().upper()
+
     if x_mode == "REAL" and not token:
         raise HTTPException(
             status_code=401,
@@ -87,7 +89,6 @@ async def get_current_user(
 
     if _IS_DEV_BYPASS:
         user = await _get_or_create_dev_user(db)
-        env_header = (request.headers.get("X-Revive-Environment") or "").strip().upper()
         from app.state import set_active_environment
         if env_header in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "DEMO"):
             set_active_environment(user.merchant_id, env_header)

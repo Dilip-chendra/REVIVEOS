@@ -127,8 +127,9 @@ class RecoveryCapitalAllocator:
         state = get_state(merchant_id)
         env = state.get("active_environment", "DEMO")
         
-        if env in ("RAZORPAY_TEST", "RAZORPAY_LIVE"):
-            raw_cases = state.get("cases", [])
+        if env in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL"):
+            target_key = "provider_test_cases" if env in ("RAZORPAY_TEST", "REAL") else "provider_live_cases"
+            raw_cases = state.get(target_key, [])
             res_list = []
             for raw in raw_cases:
                 opp = Opportunity(
@@ -224,7 +225,8 @@ class RecoveryCapitalAllocator:
         env_is_real = env in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL")
 
         if env_is_real:
-            raw_cases = state.get("cases", [])
+            target_key = "provider_test_cases" if env in ("RAZORPAY_TEST", "REAL") else "provider_live_cases"
+            raw_cases = state.get(target_key, [])
             raw_opps = []
             for raw in raw_cases:
                 raw_opps.append({

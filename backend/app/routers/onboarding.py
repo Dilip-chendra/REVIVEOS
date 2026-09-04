@@ -385,4 +385,6 @@ def _seed_demo_for_merchant(merchant_id: str, state: dict) -> None:
             "total_cases": len(cases),
         }
 
-    state["cases"] = cases
+    state["demo_cases"] = cases
+    from app.state import _sync_active_cases_and_metrics
+    _sync_active_cases_and_metrics(merchant_id)
