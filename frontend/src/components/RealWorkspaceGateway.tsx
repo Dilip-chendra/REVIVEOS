@@ -43,6 +43,7 @@ export default function RealWorkspaceGateway() {
   });
 
   // Razorpay Credentials Fields
+  const [selectedEnv, setSelectedEnv] = useState<'test' | 'live'>('test');
   const [keyId, setKeyId] = useState('');
   const [keySecret, setKeySecret] = useState('');
   const [webhookSecret, setWebhookSecret] = useState('');
@@ -86,12 +87,18 @@ export default function RealWorkspaceGateway() {
 
   const handleConnectRazorpay = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!keyId.trim() || !keySecret.trim()) {
+    const cleanKey = keyId.trim();
+    const cleanSecret = keySecret.trim();
+    if (!cleanKey || !cleanSecret) {
       setErrorMessage('Please provide both Razorpay Key ID and Key Secret.');
       return;
     }
-    if (!keyId.trim().startsWith('rzp_test_') && !keyId.trim().startsWith('rzp_live_')) {
-      setErrorMessage('Key ID must begin with rzp_test_ (for Test mode) or rzp_live_.');
+    if (selectedEnv === 'test' && !cleanKey.startsWith('rzp_test_')) {
+      setErrorMessage('Test mode Key ID must begin with rzp_test_. Select "Live / Production" if you are entering production keys.');
+      return;
+    }
+    if (selectedEnv === 'live' && !cleanKey.startsWith('rzp_live_')) {
+      setErrorMessage('Live mode Key ID must begin with rzp_live_. Select "Test / Sandbox" if you are entering sandbox keys.');
       return;
     }
     setErrorMessage(null);
@@ -99,10 +106,10 @@ export default function RealWorkspaceGateway() {
     setStep(3); // Show verification loader
     try {
       const res = await connectRazorpay({
-        key_id: keyId.trim(),
-        key_secret: keySecret.trim(),
+        key_id: cleanKey,
+        key_secret: cleanSecret,
         webhook_secret: webhookSecret.trim(),
-        environment: 'test',
+        environment: selectedEnv,
       });
       if (!res?.success) {
         setErrorMessage(res?.error || res?.error_detail || 'Verification failed on Razorpay API.');
@@ -248,7 +255,7 @@ export default function RealWorkspaceGateway() {
             }}>
               2
             </div>
-            <span>Connect Razorpay TEST</span>
+            <span>Connect Razorpay</span>
           </div>
 
           <div style={{ width: 40, height: 1, background: step >= 3 ? '#38BDF8' : '#334155' }} />
@@ -502,57 +509,113 @@ export default function RealWorkspaceGateway() {
           </form>
         )}
 
-        {/* STEP 2: CONNECT RAZORPAY TEST ACCOUNT */}
+        {/* STEP 2: CONNECT RAZORPAY ACCOUNT */}
         {step === 2 && (
           <form onSubmit={handleConnectRazorpay}>
             <div style={{ textAlign: 'center', marginBottom: 24 }}>
               <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#F8FAFC', marginBottom: 6 }}>
-                Connect Razorpay Test Account
+                Connect your Razorpay account
               </h2>
-              <p style={{ fontSize: '0.84rem', color: '#94A3B8', maxWidth: 480, margin: '0 auto', lineHeight: 1.5 }}>
-                Provide your Razorpay <strong>Test Mode</strong> credentials to enable real-time ingestion and test recovery workflows without live money.
+              <p style={{ fontSize: '0.84rem', color: '#94A3B8', maxWidth: 520, margin: '0 auto', lineHeight: 1.5 }}>
+                Link your Razorpay merchant account to ingest transactions, calibrate risk intelligence, and execute revenue recovery workflows.
               </p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Environment Tag */}
-              <div style={{
-                background: '#0B1222',
-                border: '1px solid #1E293B',
-                borderRadius: 8,
-                padding: '12px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}>
-                <div>
-                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#F1F5F9' }}>
-                    Razorpay Environment: Test Mode
-                  </div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748B', marginTop: 2 }}>
-                    Uses safe simulated sandbox rails on api.razorpay.com
-                  </div>
-                </div>
+              {/* Interactive Environment Selector */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#CBD5E1', marginBottom: 8 }}>
+                  Connection Environment *
+                </label>
                 <div style={{
-                  padding: '4px 10px',
-                  borderRadius: 6,
-                  background: 'rgba(56, 189, 248, 0.15)',
-                  color: '#38BDF8',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: 12,
                 }}>
-                  ● TEST MODE ONLY
+                  {/* Test / Sandbox Option */}
+                  <div
+                    onClick={() => {
+                      setSelectedEnv('test');
+                      setErrorMessage(null);
+                    }}
+                    style={{
+                      border: `1.5px solid ${selectedEnv === 'test' ? '#38BDF8' : '#1E293B'}`,
+                      background: selectedEnv === 'test' ? 'rgba(56, 189, 248, 0.08)' : '#0B1222',
+                      borderRadius: 10,
+                      padding: '14px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      position: 'relative',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: '0.84rem', fontWeight: 800, color: selectedEnv === 'test' ? '#38BDF8' : '#F1F5F9' }}>
+                        Test / Sandbox
+                      </span>
+                      <span style={{
+                        padding: '2px 8px',
+                        borderRadius: 5,
+                        background: selectedEnv === 'test' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(100, 116, 139, 0.2)',
+                        color: selectedEnv === 'test' ? '#38BDF8' : '#94A3B8',
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        fontFamily: 'monospace',
+                      }}>
+                        rzp_test_...
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.72rem', color: '#94A3B8', lineHeight: 1.4 }}>
+                      Safe sandbox rails on <code>api.razorpay.com</code>. No real money moved. Used for end-to-end integration testing and risk simulation.
+                    </p>
+                  </div>
+
+                  {/* Live / Production Option */}
+                  <div
+                    onClick={() => {
+                      setSelectedEnv('live');
+                      setErrorMessage(null);
+                    }}
+                    style={{
+                      border: `1.5px solid ${selectedEnv === 'live' ? '#10B981' : '#1E293B'}`,
+                      background: selectedEnv === 'live' ? 'rgba(16, 185, 129, 0.08)' : '#0B1222',
+                      borderRadius: 10,
+                      padding: '14px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      position: 'relative',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: '0.84rem', fontWeight: 800, color: selectedEnv === 'live' ? '#10B981' : '#F1F5F9' }}>
+                        Live / Production
+                      </span>
+                      <span style={{
+                        padding: '2px 8px',
+                        borderRadius: 5,
+                        background: selectedEnv === 'live' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(100, 116, 139, 0.2)',
+                        color: selectedEnv === 'live' ? '#34D399' : '#94A3B8',
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        fontFamily: 'monospace',
+                      }}>
+                        rzp_live_...
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.72rem', color: '#94A3B8', lineHeight: 1.4 }}>
+                      Production merchant telemetry on <code>api.razorpay.com</code>. Live money actions guarded by policy firewall and human confirmation.
+                    </p>
+                  </div>
                 </div>
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#CBD5E1', marginBottom: 6 }}>
-                  Razorpay Key ID *
+                  Razorpay Key ID ({selectedEnv === 'test' ? 'Test Mode' : 'Live Mode'}) *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="rzp_test_..."
+                  placeholder={selectedEnv === 'test' ? 'rzp_test_...' : 'rzp_live_...'}
                   value={keyId}
                   onChange={e => setKeyId(e.target.value)}
                   style={{
@@ -569,7 +632,9 @@ export default function RealWorkspaceGateway() {
                   }}
                 />
                 <div style={{ fontSize: '0.7rem', color: '#64748B', marginTop: 4 }}>
-                  Obtain from Razorpay Dashboard → Settings → API Keys → Generate Test Key.
+                  {selectedEnv === 'test'
+                    ? 'Obtain from Razorpay Dashboard → Settings → API Keys → Generate Test Key.'
+                    : 'Obtain from Razorpay Dashboard → Settings → API Keys → Generate Live Key.'}
                 </div>
               </div>
 
@@ -624,6 +689,25 @@ export default function RealWorkspaceGateway() {
                 />
               </div>
 
+              {selectedEnv === 'live' && (
+                <div style={{
+                  background: 'rgba(245, 158, 11, 0.08)',
+                  border: '1px solid rgba(245, 158, 11, 0.25)',
+                  borderRadius: 8,
+                  padding: '10px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  color: '#FCD34D',
+                  fontSize: '0.73rem',
+                }}>
+                  <AlertTriangle size={16} color="#F59E0B" style={{ flexShrink: 0 }} />
+                  <div>
+                    <strong>Production Rails Guarded:</strong> ReviveOS ingests telemetry in read-only mode by default. Real-money actions (such as generating recovery payment links or retrying mandates) will require human operator confirmation.
+                  </div>
+                </div>
+              )}
+
               {/* Security Guarantee Alert */}
               <div style={{
                 background: 'rgba(16, 185, 129, 0.08)',
@@ -668,7 +752,9 @@ export default function RealWorkspaceGateway() {
                   type="submit"
                   disabled={submitting}
                   style={{
-                    background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                    background: selectedEnv === 'live'
+                      ? 'linear-gradient(135deg, #10B981 0%, #059669 100%)'
+                      : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
                     color: '#FFFFFF',
                     border: 'none',
                     borderRadius: 8,
@@ -679,11 +765,13 @@ export default function RealWorkspaceGateway() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
-                    boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
+                    boxShadow: selectedEnv === 'live'
+                      ? '0 4px 14px rgba(16, 185, 129, 0.35)'
+                      : '0 4px 14px rgba(37, 99, 235, 0.35)',
                   }}
                 >
                   {submitting ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
-                  <span>Connect & Verify Credentials</span>
+                  <span>Connect & Verify {selectedEnv === 'live' ? 'Live' : 'Test'} Credentials</span>
                 </button>
               </div>
             </div>
@@ -698,7 +786,7 @@ export default function RealWorkspaceGateway() {
               Verifying & Ingesting Workspace Data
             </h3>
             <p style={{ fontSize: '0.84rem', color: '#94A3B8', maxWidth: 440, margin: '0 auto 24px', lineHeight: 1.5 }}>
-              Connecting directly to <code>api.razorpay.com</code>, verifying permissions, and preparing your private recovery workspace.
+              Connecting directly to <code>api.razorpay.com</code> ({selectedEnv.toUpperCase()} mode), verifying permissions, and preparing your private recovery workspace.
             </p>
 
             <div style={{
@@ -717,7 +805,7 @@ export default function RealWorkspaceGateway() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CheckCircle2 size={14} color="#10B981" />
-                <span>Authenticating API Key & Secret with Razorpay</span>
+                <span>Authenticating {selectedEnv === 'live' ? 'Live' : 'Test'} API Key & Secret with Razorpay</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CheckCircle2 size={14} color="#10B981" />
@@ -725,7 +813,7 @@ export default function RealWorkspaceGateway() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Loader2 size={14} color="#38BDF8" className="animate-spin" />
-                <span>Synchronizing test payment telemetry...</span>
+                <span>Synchronizing {selectedEnv === 'live' ? 'production' : 'test'} payment telemetry...</span>
               </div>
             </div>
           </div>

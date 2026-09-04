@@ -249,7 +249,7 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                   background: isDemoMode ? "rgba(59, 130, 246, 0.22)" : "transparent",
                   color: isDemoMode ? "#60A5FA" : "#94A3B8",
                   fontWeight: isDemoMode ? 800 : 600,
-                  fontSize: "0.75rem",
+                  fontSize: "0.74rem",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
@@ -261,7 +261,7 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                 <span style={{ fontSize: "0.65rem", color: isDemoMode ? "#60A5FA" : "#64748B" }}>
                   {isDemoMode ? "●" : "○"}
                 </span>
-                <span>Demo Mode</span>
+                <span>REVIVEOS: DEMO</span>
               </button>
 
               <button
@@ -277,7 +277,7 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                   background: isRealMode ? "rgba(16, 185, 129, 0.22)" : "transparent",
                   color: isRealMode ? "#34D399" : "#94A3B8",
                   fontWeight: isRealMode ? 800 : 600,
-                  fontSize: "0.75rem",
+                  fontSize: "0.74rem",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
@@ -289,7 +289,7 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                 <span style={{ fontSize: "0.65rem", color: isRealMode ? "#10B981" : "#64748B" }}>
                   {isRealMode ? "●" : "○"}
                 </span>
-                <span>Real Mode</span>
+                <span>REVIVEOS: REAL</span>
               </button>
             </div>
 
@@ -372,23 +372,12 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                 color: isConnected ? "#34D399" : "#FCD34D",
                 letterSpacing: "0.01em",
               }}>
-                {isConnected ? "Razorpay Connected" : "Connect Razorpay"}
+                {isConnected
+                  ? (wsRazorpayStatus?.environment?.toLowerCase() === "live" || razorpayStatus?.credentials?.environment === "live"
+                      ? "RAZORPAY: CONNECTED · LIVE"
+                      : "RAZORPAY: CONNECTED · TEST")
+                  : "RAZORPAY: NOT CONNECTED"}
               </span>
-
-              {isConnected && (
-                <span style={{
-                  fontSize: "0.62rem",
-                  padding: "1px 6px",
-                  borderRadius: "4px",
-                  background: "rgba(16, 185, 129, 0.2)",
-                  color: "#6EE7B7",
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontWeight: 700,
-                  letterSpacing: "0.04em",
-                }}>
-                  {wsRazorpayStatus?.environment || (razorpayStatus?.credentials?.environment === "live" ? "LIVE" : "TEST")}
-                </span>
-              )}
             </button>
 
             {/* Raw Provider Data Inspector */}

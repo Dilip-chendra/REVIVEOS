@@ -88,7 +88,9 @@ async def get_onboarding_status(
     masked_key = credential_store.mask_key_id(creds.get("key_id", ""))
 
     state_obj = get_state(mid)
-    provider_cases = state_obj.get("provider_test_cases", [])
+    env = state_obj.get("active_environment", "RAZORPAY_TEST")
+    target_key = "provider_live_cases" if (env == "RAZORPAY_LIVE" or creds.get("environment") == "live") else "provider_test_cases"
+    provider_cases = state_obj.get(target_key, [])
     is_syncing = sync_service.is_sync_running(mid)
 
     # Evaluate business profile completeness
@@ -334,7 +336,8 @@ async def connect_razorpay_onboarding(
     )
 
     state_obj = get_state(mid)
-    cases_imported = len(state_obj.get("provider_test_cases", []))
+    target_key = "provider_live_cases" if env_str == "live" else "provider_test_cases"
+    cases_imported = len(state_obj.get(target_key, []))
 
     return {
         "success": True,
