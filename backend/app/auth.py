@@ -282,8 +282,9 @@ async def _get_or_create_sandbox_evaluator_user(db: AsyncSession) -> User:
         return user
 
     merchant = await _create_fresh_merchant(db)
-    merchant.onboarding_complete = True
-    merchant.name = "Evaluator Live Sandbox"
+    merchant.onboarding_complete = False
+    merchant.name = ""
+    merchant.onboarding_state = "NEW_USER"
 
     user = User(
         clerk_user_id="sandbox_evaluator_user",

@@ -93,6 +93,7 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
   const { isDemoMode, isRealMode, setMode } = useAppMode();
   const {
     workspace,
+    isLoading,
     onboardingState,
     razorpayStatus: wsRazorpayStatus,
     dataCounts,
@@ -582,8 +583,12 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
         {/* Content */}
         <main className="page-content">
           <ErrorBoundary section="ReviveOS Workspace">
-            {isRealMode && onboardingState !== "WORKSPACE_READY" ? (
-              <RealWorkspaceGateway />
+            {isRealMode && !isConnected && onboardingState !== "WORKSPACE_READY" && onboardingState !== "INITIAL_SYNC" ? (
+              isLoading && !workspace ? (
+                <PageLoader />
+              ) : (
+                <RealWorkspaceGateway />
+              )
             ) : (
               <Suspense fallback={<PageLoader />}>
                 <PageTransition>
@@ -662,7 +667,7 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
 }
 
 function AuthenticatedApp({ onExitDemo }: { onExitDemo?: () => void }) {
-  // Top MNC standard: Instant entry, never block workspace with a questionnaire.
+  // Enterprise standard: Instant entry, never block workspace with a questionnaire.
   const [onboarded, setOnboarded] = useState<boolean>(() => {
     // If completed/skipped previously, or session active, allow immediate access
     return (

@@ -23,7 +23,7 @@ class Merchant(Base):
     __tablename__ = "merchants"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    name = Column(String(255), nullable=False, default="My Business")
+    name = Column(String(255), nullable=False, default="")
     email = Column(String(255), nullable=False, default="")
     business_type = Column(SAEnum(BusinessType), nullable=False, default=BusinessType.other)
     industry = Column(String(100), nullable=True)

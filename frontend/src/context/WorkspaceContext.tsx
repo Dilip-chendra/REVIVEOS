@@ -94,6 +94,7 @@ const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefin
 const MODE_STORAGE_KEY = 'revive_app_mode';
 const LEGACY_DEMO_KEY = 'revive_demo_mode';
 const ENV_STORAGE_KEY = 'reviveai_active_environment';
+const ONBOARDING_STATE_KEY = 'revive_onboarding_state';
 
 export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentMode, setCurrentModeState] = useState<AppMode>(() => {
@@ -108,7 +109,10 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isSwitching, setIsSwitching] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [workspace, setWorkspace] = useState<WorkspaceProfile | null>(null);
-  const [onboardingState, setOnboardingState] = useState<OnboardingState>('NEW_USER');
+  const [onboardingState, setOnboardingState] = useState<OnboardingState>(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem(ONBOARDING_STATE_KEY) : null;
+    return (saved as OnboardingState) || 'NEW_USER';
+  });
   const [razorpayStatus, setRazorpayStatus] = useState<RazorpayConnectionStatus>({
     connected: false,
     is_configured: false,
@@ -136,7 +140,14 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       if (onboardRes) {
         setWorkspace(onboardRes.workspace);
-        setOnboardingState(onboardRes.state as OnboardingState);
+        const newState = onboardRes.state as OnboardingState;
+        setOnboardingState(newState);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(ONBOARDING_STATE_KEY, newState);
+          if (onboardRes.onboarded) {
+            localStorage.setItem('revive_onboarded', 'true');
+          }
+        }
         if (onboardRes.data_counts) {
           setDataCounts(onboardRes.data_counts);
         }
@@ -219,6 +230,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     localStorage.removeItem(MODE_STORAGE_KEY);
     localStorage.removeItem(LEGACY_DEMO_KEY);
     localStorage.removeItem(ENV_STORAGE_KEY);
+    localStorage.removeItem(ONBOARDING_STATE_KEY);
     localStorage.removeItem('revive_session_active');
     localStorage.removeItem('revive_onboarded');
     setWorkspace(null);

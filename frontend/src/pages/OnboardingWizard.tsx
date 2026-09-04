@@ -154,27 +154,26 @@ const slide = {
 
 export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   const [step, setStep] = useState<1 | 2 | 3 | "creating" | "done">(1);
-  // Top MNC institutional defaults so user is never faced with empty disabled inputs
   const [data, setData] = useState<WizardData>({
-    business_name: "NovaCart Commerce",
-    business_type: "ecommerce",
-    business_size: "large",
-    payment_platform: "razorpay",
+    business_name: "",
+    business_type: "",
+    business_size: "",
+    payment_platform: "",
   });
   const [error, setError] = useState("");
 
   const update = (key: keyof WizardData, value: string) =>
     setData((d) => ({ ...d, [key]: value }));
 
-  // 1-Click Top MNC Quick Launch: Auto-configure defaults and enter workspace instantly
+  // Fast Track Quick Launch: Configure defaults and enter workspace immediately
   const handleQuickLaunch = async () => {
     localStorage.setItem("revive_onboarded", "true");
     setStep("creating");
     setError("");
     const defaultPayload: WizardData = {
-      business_name: data.business_name.trim() || "NovaCart Commerce",
+      business_name: data.business_name.trim() || "My Business",
       business_type: data.business_type || "ecommerce",
-      business_size: data.business_size || "large",
+      business_size: data.business_size || "medium",
       payment_platform: data.payment_platform || "razorpay",
     };
     try {
@@ -289,7 +288,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
             </div>
           </div>
 
-          {/* Stepper Progress & Top MNC Skip Control */}
+          {/* Stepper Progress & Fast-Track Skip Control */}
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             {typeof step === "number" && (
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -299,7 +298,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                   { s: 3, label: "Launch" },
                 ].map(({ s, label }) => {
                   const isActive = step === s;
-                  const isPassed = step > s;
+                  const isPassed = typeof step === "number" && step > s;
                   return (
                     <div key={s} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                       <div
@@ -307,16 +306,16 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                           display: "flex",
                           alignItems: "center",
                           gap: "6px",
-                          padding: "4px 10px",
-                          borderRadius: "20px",
+                          padding: "3px 10px",
+                          borderRadius: "16px",
                           background: isActive
                             ? "rgba(59, 130, 246, 0.2)"
                             : isPassed
                             ? "rgba(16, 185, 129, 0.15)"
-                            : "rgba(30, 41, 59, 0.6)",
+                            : "rgba(15, 23, 42, 0.6)",
                           border: `1px solid ${
                             isActive
-                              ? "rgba(59, 130, 246, 0.5)"
+                              ? "rgba(59, 130, 246, 0.6)"
                               : isPassed
                               ? "rgba(16, 185, 129, 0.4)"
                               : "rgba(51, 65, 85, 0.5)"
@@ -349,7 +348,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
               </div>
             )}
 
-            {/* Top MNC Instant Skip to Workspace */}
+            {/* Fast-Track Instant Skip to Workspace */}
             <button
               type="button"
               onClick={handleSkip}
@@ -432,7 +431,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                   </p>
                 </div>
 
-                {/* ── Top MNC 1-Click Quick Launch Banner ── */}
+                {/* ── Autonomous 1-Click Fast Track Launch Banner ── */}
                 <div
                   style={{
                     marginBottom: "22px",
@@ -465,13 +464,13 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                     </div>
                     <div>
                       <div style={{ fontSize: "0.85rem", fontWeight: 800, color: "#F8FAFC", display: "flex", alignItems: "center", gap: "6px" }}>
-                        <span>Top MNC Instant Quick Launch</span>
+                        <span>Autonomous Fast Track Launch</span>
                         <span style={{ fontSize: "0.65rem", padding: "1px 6px", borderRadius: "4px", background: "rgba(16, 185, 129, 0.2)", color: "#34D399", fontWeight: 700 }}>
-                          RECOMMENDED
+                          INSTANT READY
                         </span>
                       </div>
                       <div style={{ fontSize: "0.74rem", color: "#94A3B8", marginTop: "2px" }}>
-                        Pre-configure institutional enterprise defaults and explore the workspace immediately
+                        Pre-configure institutional recovery guardrails and explore the workspace immediately
                       </div>
                     </div>
                   </div>
@@ -524,7 +523,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingWizardProps) 
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Acme Payments Pvt Ltd or NovaCart Retail"
+                    placeholder="e.g. Acme Technologies India Pvt Ltd"
                     value={data.business_name}
                     onChange={(e) => update("business_name", e.target.value)}
                     style={{

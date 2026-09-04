@@ -94,25 +94,22 @@ async def get_onboarding_status(
     is_syncing = sync_service.is_sync_running(mid)
 
     # Evaluate business profile completeness
-    is_name_valid = bool(merchant and merchant.name and merchant.name.strip() and merchant.name.strip() not in ("My Business", "NovaCart Commerce"))
-    is_profile_complete = bool(is_name_valid and merchant.business_type and merchant.business_type != BusinessType.other)
+    is_name_valid = bool(merchant and merchant.name and merchant.name.strip() and merchant.name.strip() not in ("My Business", "NovaCart Commerce", "Evaluator Live Sandbox"))
+    is_profile_complete = bool(is_name_valid and merchant.business_type)
 
     # State Machine Resolution
-    if not merchant or not merchant.name or not merchant.name.strip() or merchant.name == "My Business":
+    if is_razorpay_configured:
+        current_state = "INITIAL_SYNC" if is_syncing else "WORKSPACE_READY"
+        onboarded = True
+    elif not is_name_valid:
         current_state = "NEW_USER"
         onboarded = False
     elif not is_profile_complete:
         current_state = "PROFILE_INCOMPLETE"
         onboarded = False
-    elif not is_razorpay_configured:
+    else:
         current_state = "RAZORPAY_NOT_CONNECTED"
         onboarded = False
-    elif is_syncing:
-        current_state = "INITIAL_SYNC"
-        onboarded = True
-    else:
-        current_state = "WORKSPACE_READY"
-        onboarded = True
 
     return {
         "onboarded": onboarded,

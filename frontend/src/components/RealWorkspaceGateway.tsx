@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ShieldCheck,
@@ -18,6 +18,7 @@ export default function RealWorkspaceGateway() {
     onboardingState,
     saveProfile,
     connectRazorpay,
+    refreshWorkspace,
     setMode,
   } = useWorkspace();
 
@@ -28,18 +29,41 @@ export default function RealWorkspaceGateway() {
     return 1;
   });
 
-  // Business Context Fields
-  const [businessName, setBusinessName] = useState(workspace?.name || '');
+  // Sync step if onboardingState updates asynchronously
+  useEffect(() => {
+    if (onboardingState === 'RAZORPAY_NOT_CONNECTED') {
+      setStep(prev => (prev === 1 ? 2 : prev));
+    } else if (onboardingState === 'INITIAL_SYNC' || onboardingState === 'WORKSPACE_READY') {
+      setStep(3);
+    }
+  }, [onboardingState]);
+
+  // Business Context Fields - Clean initial state with helpful placeholders
+  const [businessName, setBusinessName] = useState(() => {
+    const raw = workspace?.name || '';
+    if (['Evaluator Live Sandbox', 'My Business', 'NovaCart Commerce', 'Demo Business (Dev)'].includes(raw.trim())) {
+      return '';
+    }
+    return raw;
+  });
   const [businessType, setBusinessType] = useState(workspace?.business_type || 'ecommerce');
-  const [industry, setIndustry] = useState(workspace?.industry || 'FinTech / E-Commerce');
+  const [industry, setIndustry] = useState(() => {
+    const raw = workspace?.industry || '';
+    if (raw === 'FinTech / E-Commerce') return '';
+    return raw;
+  });
   const currency = workspace?.currency || 'INR';
   const country = workspace?.country || 'IN';
-  const [monthlyGmv, setMonthlyGmv] = useState<number>(workspace?.monthly_gmv_inr || 2500000);
-  const [aov, setAov] = useState<number>(workspace?.average_order_value_inr || 2499);
+  const [monthlyGmv, setMonthlyGmv] = useState<string>(() => {
+    return workspace?.monthly_gmv_inr ? String(workspace.monthly_gmv_inr) : '';
+  });
+  const [aov, setAov] = useState<string>(() => {
+    return workspace?.average_order_value_inr ? String(workspace.average_order_value_inr) : '';
+  });
   const [recoveryGoals, setRecoveryGoals] = useState<string[]>(() => {
     return workspace?.primary_recovery_goals
-      ? workspace.primary_recovery_goals.split(',').map(s => s.trim())
-      : ['Subscription Recovery', 'Checkout Recovery'];
+      ? workspace.primary_recovery_goals.split(',').map(s => s.trim()).filter(Boolean)
+      : [];
   });
 
   // Razorpay Credentials Fields
@@ -51,6 +75,7 @@ export default function RealWorkspaceGateway() {
   // UI status
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [syncDone, setSyncDone] = useState(false);
 
   const toggleGoal = (goal: string) => {
     setRecoveryGoals(prev =>
@@ -70,11 +95,11 @@ export default function RealWorkspaceGateway() {
       await saveProfile({
         business_name: businessName.trim(),
         business_type: businessType,
-        industry,
+        industry: industry.trim(),
         currency,
         country,
-        monthly_gmv_inr: Number(monthlyGmv),
-        average_order_value_inr: Number(aov),
+        monthly_gmv_inr: monthlyGmv ? Number(monthlyGmv) : 0,
+        average_order_value_inr: aov ? Number(aov) : 0,
         primary_recovery_goals: recoveryGoals.join(', '),
       });
       setStep(2);
@@ -111,7 +136,17 @@ export default function RealWorkspaceGateway() {
         webhook_secret: webhookSecret.trim(),
         environment: selectedEnv,
       });
-      if (!res?.success) {
+      if (res?.success) {
+        setSyncDone(true);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('revive_onboarded', 'true');
+          localStorage.setItem('revive_onboarding_state', 'WORKSPACE_READY');
+        }
+        await refreshWorkspace();
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1200);
+      } else {
         setErrorMessage(res?.error || res?.error_detail || 'Verification failed on Razorpay API.');
         setStep(2);
       }
@@ -401,9 +436,9 @@ export default function RealWorkspaceGateway() {
                   </label>
                   <input
                     type="number"
-                    placeholder="2500000"
+                    placeholder="e.g. 2500000"
                     value={monthlyGmv}
-                    onChange={e => setMonthlyGmv(Number(e.target.value))}
+                    onChange={e => setMonthlyGmv(e.target.value)}
                     style={{
                       width: '100%',
                       boxSizing: 'border-box',
@@ -424,9 +459,9 @@ export default function RealWorkspaceGateway() {
                   </label>
                   <input
                     type="number"
-                    placeholder="2499"
+                    placeholder="e.g. 2499"
                     value={aov}
-                    onChange={e => setAov(Number(e.target.value))}
+                    onChange={e => setAov(e.target.value)}
                     style={{
                       width: '100%',
                       boxSizing: 'border-box',
@@ -781,41 +816,78 @@ export default function RealWorkspaceGateway() {
         {/* STEP 3: VERIFYING & INGESTING DATA */}
         {step === 3 && (
           <div style={{ textAlign: 'center', padding: '24px 0' }}>
-            <Loader2 size={42} color="#38BDF8" className="animate-spin" style={{ margin: '0 auto 16px' }} />
+            {syncDone ? (
+              <CheckCircle2 size={46} color="#10B981" style={{ margin: '0 auto 16px' }} />
+            ) : (
+              <Loader2 size={42} color="#38BDF8" className="animate-spin" style={{ margin: '0 auto 16px' }} />
+            )}
             <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#F8FAFC', marginBottom: 8 }}>
-              Verifying & Ingesting Workspace Data
+              {syncDone ? 'Razorpay Workspace Configured & Verified!' : 'Verifying & Ingesting Workspace Data'}
             </h3>
             <p style={{ fontSize: '0.84rem', color: '#94A3B8', maxWidth: 440, margin: '0 auto 24px', lineHeight: 1.5 }}>
-              Connecting directly to <code>api.razorpay.com</code> ({selectedEnv.toUpperCase()} mode), verifying permissions, and preparing your private recovery workspace.
+              {syncDone
+                ? `Direct link to api.razorpay.com established. Ingesting live payment telemetry and launching your autonomous recovery console...`
+                : `Connecting directly to api.razorpay.com (${selectedEnv.toUpperCase()} mode), verifying permissions, and preparing your private recovery workspace.`}
             </p>
 
             <div style={{
-              maxWidth: 420,
+              maxWidth: 440,
               margin: '0 auto',
               background: '#0B1222',
-              borderRadius: 8,
-              border: '1px solid #1E293B',
-              padding: '14px 16px',
+              borderRadius: 10,
+              border: syncDone ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid #1E293B',
+              padding: '16px 18px',
               textAlign: 'left',
               display: 'flex',
               flexDirection: 'column',
-              gap: 10,
-              fontSize: '0.78rem',
+              gap: 12,
+              fontSize: '0.8rem',
               color: '#CBD5E1',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <CheckCircle2 size={14} color="#10B981" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <CheckCircle2 size={16} color="#10B981" style={{ flexShrink: 0 }} />
                 <span>Authenticating {selectedEnv === 'live' ? 'Live' : 'Test'} API Key & Secret with Razorpay</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <CheckCircle2 size={14} color="#10B981" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <CheckCircle2 size={16} color="#10B981" style={{ flexShrink: 0 }} />
                 <span>Persisting encrypted credentials to tenant store</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Loader2 size={14} color="#38BDF8" className="animate-spin" />
-                <span>Synchronizing {selectedEnv === 'live' ? 'production' : 'test'} payment telemetry...</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {syncDone ? (
+                  <CheckCircle2 size={16} color="#10B981" style={{ flexShrink: 0 }} />
+                ) : (
+                  <Loader2 size={16} color="#38BDF8" className="animate-spin" style={{ flexShrink: 0 }} />
+                )}
+                <span>
+                  {syncDone
+                    ? `Synchronized ${selectedEnv === 'live' ? 'production' : 'test'} telemetry: Workspace ready!`
+                    : `Synchronizing ${selectedEnv === 'live' ? 'production' : 'test'} payment telemetry...`}
+                </span>
               </div>
             </div>
+
+            {syncDone && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                style={{
+                  marginTop: 24,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  color: '#6EE7B7',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                }}
+              >
+                <Sparkles size={16} color="#10B981" />
+                <span>Launching Recovery Console...</span>
+              </motion.div>
+            )}
           </div>
         )}
       </motion.div>
