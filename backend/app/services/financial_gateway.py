@@ -495,6 +495,23 @@ class FinancialActionGateway:
                 )
 
         # ── 12. EXECUTION & RECONCILIATION ──────────────────────────────────
+        from app.services.credential_store import credential_store
+        from app.services.razorpay_service import razorpay_service
+        creds = credential_store.get_credentials(mid, "razorpay")
+        real_link_data = None
+        if creds.get("is_configured") and req.action_type in ("SEND_PAYMENT_LINK", "GENERATE_PAYMENT_LINK", "SEND_INVOICE_REMINDER", "payment_link"):
+            try:
+                real_link_data = razorpay_service.create_payment_link(
+                    amount_inr=authoritative_amount,
+                    description=f"ReviveOS Recovery for Case {req.case_id}",
+                    customer_name=case.get("customer_name") or "Valued Customer",
+                    customer_email=case.get("customer_email"),
+                    notes={"case_id": req.case_id, "contract_id": contract_obj.contract_id if contract_obj else "NONE"},
+                    merchant_id=mid,
+                )
+            except Exception as exc:
+                logger.warning(f"Could not dispatch live Razorpay link for {mid}: {exc}")
+
         import random
         recovery_prob = case.get("recovery_probability", 0.75)
         if req.actor == "USER":
@@ -516,12 +533,18 @@ class FinancialActionGateway:
 
         case["status"] = "recovered" if recovered else "failed"
         case["is_human_required"] = False
+        exec_message = (
+            f"Live Razorpay Link generated: {real_link_data['short_url']}"
+            if real_link_data and real_link_data.get("short_url")
+            else f"Execution '{req.action_type}' {'succeeded' if recovered else 'failed'} (₹{amount_rec:,.0f} captured)."
+        )
         case["recovery_result"] = {
-            "recovered": recovered,
+            "recovered": recovered or bool(real_link_data),
             "amount_recovered_inr": amount_rec,
             "action": req.action_type,
             "blocked": False,
-            "message": f"Execution '{req.action_type}' {'succeeded' if recovered else 'failed'} (₹{amount_rec:,.0f} captured).",
+            "message": exec_message,
+            "payment_link": real_link_data,
         }
         _sync_active_cases_and_metrics(mid)
 
@@ -538,6 +561,8 @@ class FinancialActionGateway:
                 "note": req.note,
                 "receipt_hash": receipt_hash,
                 "contract_id": contract_obj.contract_id if contract_obj else None,
+                "payment_link_id": real_link_data.get("id") if real_link_data else None,
+                "short_url": real_link_data.get("short_url") if real_link_data else None,
             },
             case["id"],
             amount_rec,

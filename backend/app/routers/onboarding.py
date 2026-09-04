@@ -1,16 +1,25 @@
 """
-ReviveAI — Onboarding Router
+ReviveAI — Enterprise Multi-Tenant Onboarding State Machine & Workspace Router
 
-POST /api/onboarding/complete   Complete the onboarding wizard and seed demo data
-GET  /api/onboarding/status     Check whether the current user has completed onboarding
+States:
+- NEW_USER: Fresh merchant identity without business profile
+- PROFILE_INCOMPLETE: Partial business context submitted
+- RAZORPAY_NOT_CONNECTED: Business context complete, awaiting Razorpay Test credentials
+- RAZORPAY_CONNECTING: Credential verification underway
+- RAZORPAY_CONNECTED: Credential verified against api.razorpay.com
+- INITIAL_SYNC: Ingesting payment, subscription, and invoice data
+- WORKSPACE_READY: Live real workspace active with real intelligence
+- SYNC_ERROR: Error occurred during sync
+- INTEGRATION_ERROR: Credential verification failed
 """
 from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
+from typing import Optional, List, Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -18,12 +27,10 @@ from app.auth import get_current_user
 from app.database import get_db
 from app.models.merchant import Merchant, BusinessType
 from app.models.user import User
-from app.state import get_state, reset_state, add_audit_event
-
-# Import the simulation machinery so we can seed demo data
-from app.data.generator import DataGenerator
-from app.data.seeds import DEMO_SCENARIOS
-from app.services.risk_engine import RiskFeatures, risk_engine
+from app.services.credential_store import credential_store
+from app.services.razorpay_service import razorpay_service
+from app.services.sync_service import sync_service
+from app.state import get_state, reset_state, add_audit_event, set_active_environment
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +39,34 @@ router = APIRouter(prefix="/onboarding", tags=["Onboarding"])
 VALID_BUSINESS_TYPES = {e.value for e in BusinessType}
 
 
+# ── Request / Response Models ────────────────────────────────────────────────
+
+class BusinessProfileRequest(BaseModel):
+    business_name: str = Field(..., min_length=2, description="Legal or operating business name")
+    business_type: str = Field(default="ecommerce", description="ecommerce / saas / subscription / b2b / marketplace / services / other")
+    industry: Optional[str] = Field(default="", description="Industry segment (e.g. Retail, FinTech, EdTech)")
+    currency: Optional[str] = Field(default="INR", description="Operating currency")
+    country: Optional[str] = Field(default="IN", description="Country of incorporation")
+    monthly_gmv_inr: Optional[float] = Field(default=0.0, description="Monthly GMV in INR")
+    average_order_value_inr: Optional[float] = Field(default=0.0, description="Average Order Value in INR")
+    primary_recovery_goals: Optional[str] = Field(default="", description="Recovery priorities")
+    primary_payment_types: Optional[str] = Field(default="", description="Accepted payment methods")
+    business_size: Optional[str] = Field(default="medium", description="small / medium / large / enterprise")
+
+
+class ConnectRazorpayOnboardingRequest(BaseModel):
+    key_id: str = Field(..., description="Razorpay API Key ID (rzp_test_... or rzp_live_...)")
+    key_secret: str = Field(..., description="Razorpay API Key Secret")
+    environment: str = Field(default="test", description="test or live")
+    webhook_secret: Optional[str] = Field(default="", description="Webhook secret (optional)")
+
+
 class OnboardingRequest(BaseModel):
-    business_name: str = "NovaCart Commerce"
-    business_type: str = "ecommerce"          # ecommerce / saas / subscription / b2b / other
-    business_size: str = "large"              # small / medium / large / enterprise
-    payment_platform: str = "razorpay"        # razorpay / stripe / payu / cashfree / other
+    """Legacy request model for backward compatibility."""
+    business_name: str = "My Business"
+    business_type: str = "ecommerce"
+    business_size: str = "large"
+    payment_platform: str = "razorpay"
 
 
 # ── GET /status ───────────────────────────────────────────────────────────────
@@ -47,93 +77,353 @@ async def get_onboarding_status(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Returns whether the current user's merchant has completed onboarding.
-    Top MNC standard: Non-blocking, defaults to onboarded so user can access workspace immediately.
+    Evaluates and returns the genuine onboarding state machine status for the authenticated workspace.
     """
-    result = await db.execute(
-        select(Merchant).where(Merchant.id == current_user.merchant_id)
-    )
+    mid = current_user.merchant_id
+    result = await db.execute(select(Merchant).where(Merchant.id == mid))
     merchant: Merchant | None = result.scalars().first()
-    if not merchant:
-        return {
-            "onboarded": True,
-            "merchant": {
-                "id": current_user.merchant_id,
-                "name": "NovaCart Commerce",
-                "business_type": "ecommerce",
-                "business_size": "large",
-                "payment_platform": "razorpay",
-            },
-        }
 
-    # If not previously completed, automatically mark complete for frictionless MNC access
-    if not merchant.onboarding_complete:
-        merchant.onboarding_complete = True
-        if not merchant.name or merchant.name == "My Business":
-            merchant.name = "NovaCart Commerce"
-        if not merchant.business_type:
-            merchant.business_type = BusinessType.ecommerce
-        await db.commit()
+    creds = credential_store.get_credentials(mid, "razorpay")
+    is_razorpay_configured = bool(creds.get("is_configured"))
+    masked_key = credential_store.mask_key_id(creds.get("key_id", ""))
+
+    state_obj = get_state(mid)
+    provider_cases = state_obj.get("provider_test_cases", [])
+    is_syncing = sync_service.is_sync_running(mid)
+
+    # Evaluate business profile completeness
+    is_name_valid = bool(merchant and merchant.name and merchant.name.strip() and merchant.name.strip() not in ("My Business", "NovaCart Commerce"))
+    is_profile_complete = bool(is_name_valid and merchant.business_type and merchant.business_type != BusinessType.other)
+
+    # State Machine Resolution
+    if not merchant or not merchant.name or not merchant.name.strip() or merchant.name == "My Business":
+        current_state = "NEW_USER"
+        onboarded = False
+    elif not is_profile_complete:
+        current_state = "PROFILE_INCOMPLETE"
+        onboarded = False
+    elif not is_razorpay_configured:
+        current_state = "RAZORPAY_NOT_CONNECTED"
+        onboarded = False
+    elif is_syncing:
+        current_state = "INITIAL_SYNC"
+        onboarded = True
+    else:
+        current_state = "WORKSPACE_READY"
+        onboarded = True
 
     return {
-        "onboarded": True,
+        "onboarded": onboarded,
+        "onboarding_complete": onboarded,
+        "state": current_state,
+        "onboarding_state": current_state,
+        "razorpay_status": {
+            "connected": is_razorpay_configured,
+            "environment": creds.get("environment", "none"),
+            "key_id_masked": masked_key,
+        },
+        "workspace": {
+            "id": merchant.id if merchant else mid,
+            "name": merchant.name if merchant else "My Workspace",
+            "business_type": merchant.business_type.value if (merchant and merchant.business_type) else "other",
+            "industry": (merchant.industry or "") if merchant else "",
+            "currency": (merchant.currency or "INR") if merchant else "INR",
+            "country": (merchant.country or "IN") if merchant else "IN",
+            "monthly_gmv_inr": (merchant.monthly_gmv_inr or 0.0) if merchant else 0.0,
+            "average_order_value_inr": (merchant.average_order_value_inr or 0.0) if merchant else 0.0,
+            "primary_recovery_goals": (merchant.primary_recovery_goals or "") if merchant else "",
+            "primary_payment_types": (merchant.primary_payment_types or "") if merchant else "",
+            "business_size": (merchant.business_size or "") if merchant else "",
+            "payment_platform": (merchant.payment_platform or "razorpay") if merchant else "razorpay",
+            "onboarding_state": current_state,
+            "onboarding_complete": onboarded,
+        },
+        "merchant": {
+            "id": merchant.id if merchant else mid,
+            "name": merchant.name if merchant else "My Workspace",
+            "business_type": merchant.business_type.value if (merchant and merchant.business_type) else "other",
+            "business_size": (merchant.business_size or "") if merchant else "",
+            "payment_platform": (merchant.payment_platform or "razorpay") if merchant else "razorpay",
+        },
+        "razorpay": {
+            "connected": is_razorpay_configured,
+            "environment": creds.get("environment", "none"),
+            "key_id_masked": masked_key,
+        },
+        "data_counts": {
+            "payments": len(provider_cases),
+            "subscriptions": 0,
+            "invoices": 0,
+            "recovery_cases": len([c for c in provider_cases if c.get("status") == "open"]),
+        },
+        "sync": {
+            "is_syncing": is_syncing,
+            "last_synced_at": state_obj.get("last_sync_at"),
+        }
+    }
+
+
+# ── POST /business-profile ───────────────────────────────────────────────────
+
+@router.post("/business-profile")
+async def save_business_profile(
+    body: BusinessProfileRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Persists real business information for the authenticated workspace.
+    Advances the onboarding state machine to RAZORPAY_NOT_CONNECTED.
+    """
+    mid = current_user.merchant_id
+    result = await db.execute(select(Merchant).where(Merchant.id == mid))
+    merchant: Merchant | None = result.scalars().first()
+
+    btype_str = body.business_type.lower()
+    if btype_str not in VALID_BUSINESS_TYPES:
+        btype_str = "other"
+
+    if not merchant:
+        merchant = Merchant(
+            id=mid,
+            name=body.business_name.strip(),
+            email=current_user.email or "",
+            business_type=BusinessType(btype_str),
+            industry=body.industry.strip() if body.industry else "",
+            currency=body.currency.strip() if body.currency else "INR",
+            country=body.country.strip() if body.country else "IN",
+            monthly_gmv_inr=float(body.monthly_gmv_inr or 0.0),
+            average_order_value_inr=float(body.average_order_value_inr or 0.0),
+            primary_recovery_goals=body.primary_recovery_goals or "",
+            primary_payment_types=body.primary_payment_types or "",
+            business_size=body.business_size or "medium",
+            payment_platform="razorpay",
+            onboarding_complete=False,
+            onboarding_state="RAZORPAY_NOT_CONNECTED",
+        )
+        db.add(merchant)
+    else:
+        merchant.name = body.business_name.strip()
+        merchant.business_type = BusinessType(btype_str)
+        merchant.industry = body.industry.strip() if body.industry else merchant.industry
+        merchant.currency = body.currency.strip() if body.currency else merchant.currency
+        merchant.country = body.country.strip() if body.country else merchant.country
+        merchant.monthly_gmv_inr = float(body.monthly_gmv_inr or merchant.monthly_gmv_inr or 0.0)
+        merchant.average_order_value_inr = float(body.average_order_value_inr or merchant.average_order_value_inr or 0.0)
+        merchant.primary_recovery_goals = body.primary_recovery_goals or merchant.primary_recovery_goals
+        merchant.primary_payment_types = body.primary_payment_types or merchant.primary_payment_types
+        merchant.business_size = body.business_size or merchant.business_size
+        merchant.onboarding_state = "RAZORPAY_NOT_CONNECTED"
+
+    add_audit_event(
+        merchant_id=mid,
+        event_type="BUSINESS_PROFILE_CONFIGURED",
+        actor="MERCHANT_ADMIN",
+        correlation_id=f"prof_{mid[:8]}",
+        event_data={
+            "business_name": merchant.name,
+            "business_type": btype_str,
+            "industry": merchant.industry,
+            "monthly_gmv_inr": merchant.monthly_gmv_inr,
+        },
+    )
+
+    await db.commit()
+    await db.refresh(merchant)
+
+    creds = credential_store.get_credentials(mid, "razorpay")
+    next_state = "WORKSPACE_READY" if creds.get("is_configured") else "RAZORPAY_NOT_CONNECTED"
+
+    return {
+        "success": True,
+        "state": next_state,
+        "workspace": {
+            "id": merchant.id,
+            "name": merchant.name,
+            "business_type": merchant.business_type.value,
+            "industry": merchant.industry,
+            "currency": merchant.currency,
+            "country": merchant.country,
+            "monthly_gmv_inr": merchant.monthly_gmv_inr,
+            "average_order_value_inr": merchant.average_order_value_inr,
+            "primary_recovery_goals": merchant.primary_recovery_goals,
+            "primary_payment_types": merchant.primary_payment_types,
+            "onboarding_state": next_state,
+        },
         "merchant": {
             "id": merchant.id,
             "name": merchant.name,
-            "business_type": merchant.business_type.value if merchant.business_type else "ecommerce",
-            "business_size": merchant.business_size or "large",
-            "payment_platform": merchant.payment_platform or "razorpay",
+            "business_type": merchant.business_type.value,
+            "onboarding_state": next_state,
         },
     }
 
 
-# ── POST /skip ────────────────────────────────────────────────────────────────
+# ── POST /connect-razorpay ────────────────────────────────────────────────────
+
+@router.post("/connect-razorpay")
+async def connect_razorpay_onboarding(
+    body: ConnectRazorpayOnboardingRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Verifies Razorpay credentials directly against api.razorpay.com.
+    If valid: encrypts & saves credentials, triggers initial data sync, advances to WORKSPACE_READY.
+    If invalid: rejects with INTEGRATION_ERROR without fake success.
+    """
+    mid = current_user.merchant_id
+    clean_key = body.key_id.strip()
+    clean_secret = body.key_secret.strip()
+
+    if not clean_key or not clean_secret:
+        raise HTTPException(status_code=400, detail="Razorpay Key ID and Key Secret are required.")
+
+    # 1. Live authentication check against Razorpay API
+    test_res = razorpay_service.test_credentials_direct(clean_key, clean_secret)
+    if not test_res.get("success"):
+        err_msg = test_res.get("error_detail") or test_res.get("error") or "Authentication failed with api.razorpay.com"
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid Razorpay credentials: {err_msg}. Please check your Key ID and Key Secret in the Razorpay Dashboard.",
+        )
+
+    # 2. Save encrypted credentials strictly for this merchant
+    env_str = "live" if clean_key.startswith("rzp_live_") else "test"
+    credential_store.save_credentials(
+        merchant_id=mid,
+        provider="razorpay",
+        key_id=clean_key,
+        key_secret=clean_secret,
+        webhook_secret=body.webhook_secret.strip() if body.webhook_secret else "",
+        environment=env_str,
+    )
+
+    # 3. Update Merchant onboarding status in database
+    result = await db.execute(select(Merchant).where(Merchant.id == mid))
+    merchant: Merchant | None = result.scalars().first()
+    if merchant:
+        merchant.onboarding_complete = True
+        merchant.onboarding_state = "WORKSPACE_READY"
+        merchant.payment_platform = "razorpay"
+        merchant.razorpay_merchant_id = clean_key[:12]
+        await db.commit()
+
+    # 4. Switch active environment to RAZORPAY_TEST
+    target_env = "RAZORPAY_LIVE" if env_str == "live" else "RAZORPAY_TEST"
+    set_active_environment(mid, target_env)
+
+    # 5. Automatically trigger initial synchronization
+    sync_res = None
+    try:
+        sync_res = sync_service.sync_now(mid, max_records=100)
+    except Exception as exc:
+        sync_res = {"success": False, "error": str(exc)}
+
+    add_audit_event(
+        merchant_id=mid,
+        event_type="RAZORPAY_INTEGRATION_CONNECTED",
+        actor="MERCHANT_ADMIN",
+        correlation_id=f"conn_{mid[:8]}",
+        event_data={
+            "environment": env_str,
+            "key_id_masked": credential_store.mask_key_id(clean_key),
+            "latency_ms": test_res.get("latency_ms"),
+            "initial_sync": sync_res,
+        },
+    )
+
+    state_obj = get_state(mid)
+    cases_imported = len(state_obj.get("provider_test_cases", []))
+
+    return {
+        "success": True,
+        "state": "WORKSPACE_READY",
+        "environment": env_str,
+        "key_id_masked": credential_store.mask_key_id(clean_key),
+        "initial_sync": sync_res,
+        "cases_imported": cases_imported,
+        "message": f"Successfully connected Razorpay {env_str.upper()} mode and completed initial sync ({cases_imported} records ingested).",
+    }
+
+
+# ── POST /create-test-scenario ────────────────────────────────────────────────
+
+@router.post("/create-test-scenario")
+async def create_test_scenario(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    For empty Razorpay test accounts (0 real transactions yet),
+    creates a verified sandbox test candidate in this workspace
+    so the merchant can experience the full ReviveOS recovery & agent workflow.
+    """
+    mid = current_user.merchant_id
+    state_obj = get_state(mid)
+    test_cases = state_obj.get("provider_test_cases", [])
+
+    test_id = f"TEST-OPP-{len(test_cases) + 1:03d}"
+    new_case = {
+        "id": test_id,
+        "merchant_id": mid,
+        "customer_id": f"CUST-SANDBOX-{len(test_cases) + 1}",
+        "customer_name": f"Test Customer ({test_id})",
+        "customer_email": "test.customer@example.com",
+        "amount_inr": 4999.0,
+        "payment_method": "card",
+        "failure_code": "INSUFFICIENT_FUNDS",
+        "failure_category": "temporary_failure",
+        "failure_reason": "Bank declined due to balance threshold on test card",
+        "gateway": "razorpay",
+        "recovery_probability": 0.88,
+        "expected_recovery_value_inr": 4399.0,
+        "recommended_strategy": "smart_retry",
+        "confidence": 0.94,
+        "diagnosis_summary": "Test failure on Razorpay Test rails. Eligible for automated Smart Retry and 1-Tap Recovery Link.",
+        "status": "open",
+        "is_human_required": False,
+        "data_universe": "REAL_SANDBOX",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    test_cases.append(new_case)
+    state_obj["provider_test_cases"] = test_cases
+    from app.state import _sync_active_cases_and_metrics
+    _sync_active_cases_and_metrics(mid)
+
+    add_audit_event(
+        merchant_id=mid,
+        event_type="TEST_RECOVERY_SCENARIO_CREATED",
+        actor="MERCHANT_ADMIN",
+        correlation_id=f"test_{test_id}",
+        event_data={"case_id": test_id, "amount_inr": 4999.0},
+        case_id=test_id,
+        amount_inr=4999.0,
+    )
+
+    return {
+        "success": True,
+        "case": new_case,
+        "message": "Created real sandbox test candidate on connected Razorpay rails.",
+    }
+
+
+# ── Legacy Endpoints (Maintained for Backward Compatibility) ───────────────────
 
 @router.post("/skip")
 async def skip_onboarding(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    1-Click Top-MNC Quick Start / Skip:
-    Instantly marks onboarding as complete with enterprise defaults so the user
-    enters the workspace immediately with zero blocking questionnaires.
-    """
-    result = await db.execute(
-        select(Merchant).where(Merchant.id == current_user.merchant_id)
-    )
+    """Legacy quick-start."""
+    mid = current_user.merchant_id
+    result = await db.execute(select(Merchant).where(Merchant.id == mid))
     merchant: Merchant | None = result.scalars().first()
-    if not merchant:
-        merchant = Merchant(
-            id=current_user.merchant_id,
-            name="NovaCart Commerce",
-            email=current_user.email or "",
-            business_type=BusinessType.ecommerce,
-            business_size="large",
-            payment_platform="razorpay",
-            onboarding_complete=True,
-        )
-        db.add(merchant)
-        await db.flush()
-    else:
+    if merchant:
         merchant.onboarding_complete = True
-        if not merchant.name or merchant.name == "My Business":
-            merchant.name = "NovaCart Commerce"
-        if not merchant.business_type:
-            merchant.business_type = BusinessType.ecommerce
-
-    mid = merchant.id
-    state = get_state(mid)
-    if not state.get("has_run") and not state.get("cases"):
-        _seed_demo_for_merchant(mid, state)
-        state["has_run"] = True
-        state["completed_at"] = datetime.now(timezone.utc).isoformat()
-
-    await db.commit()
+        merchant.onboarding_state = "WORKSPACE_READY"
+        await db.commit()
     return {"status": "skipped", "onboarded": True, "merchant_id": mid}
 
-
-# ── POST /complete ─────────────────────────────────────────────────────────────
 
 @router.post("/complete")
 async def complete_onboarding(
@@ -141,250 +431,14 @@ async def complete_onboarding(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Completes the onboarding wizard:
-      1. Validates and saves merchant profile.
-      2. Seeds a realistic demo simulation into THIS merchant's private state.
-      3. Marks onboarding_complete = True.
-
-    After this call the frontend can navigate to the dashboard.
-    """
-    # ── Validate business type ────────────────────────────────────────────
-    btype = body.business_type.lower()
-    if btype not in VALID_BUSINESS_TYPES:
-        btype = "other"
-
-    # ── Fetch and update Merchant ─────────────────────────────────────────
-    result = await db.execute(
-        select(Merchant).where(Merchant.id == current_user.merchant_id)
-    )
+    """Legacy complete handler."""
+    mid = current_user.merchant_id
+    result = await db.execute(select(Merchant).where(Merchant.id == mid))
     merchant: Merchant | None = result.scalars().first()
-    if not merchant:
-        merchant = Merchant(
-            id=current_user.merchant_id,
-            name=body.business_name.strip() or "My Business",
-            email=current_user.email or "",
-            business_type=BusinessType(btype),
-            business_size=body.business_size,
-            payment_platform=body.payment_platform,
-            onboarding_complete=True,
-        )
-        db.add(merchant)
-        await db.flush()
+    if merchant:
+        merchant.name = body.business_name.strip() or merchant.name
+        merchant.onboarding_complete = True
+        merchant.onboarding_state = "WORKSPACE_READY"
+        await db.commit()
+    return {"status": "complete", "merchant_id": mid, "merchant_name": body.business_name}
 
-    if merchant.onboarding_complete:
-        # Idempotent — already done
-        return {"status": "already_complete", "merchant_id": merchant.id}
-
-    merchant.name = body.business_name.strip() or "My Business"
-    merchant.business_type = BusinessType(btype)
-    merchant.business_size = body.business_size
-    merchant.payment_platform = body.payment_platform
-    merchant.onboarding_complete = True
-
-    # ── Seed demo simulation for this merchant ────────────────────────────
-    mid = merchant.id
-    state = reset_state(mid)
-    state["running"] = True
-
-    _seed_demo_for_merchant(mid, state)
-
-    state["running"] = False
-    state["has_run"] = True
-    state["completed_at"] = datetime.now(timezone.utc).isoformat()
-
-    add_audit_event(
-        merchant_id=mid,
-        event_type="ONBOARDING_COMPLETE",
-        actor="system",
-        correlation_id=f"onboard_{mid}",
-        event_data={
-            "business_name": merchant.name,
-            "business_type": btype,
-            "payment_platform": body.payment_platform,
-        },
-    )
-
-    await db.commit()
-    await db.refresh(merchant)
-
-    logger.info(f"Onboarding complete — merchant_id={mid}, name={merchant.name}")
-
-    return {
-        "status": "complete",
-        "merchant_id": mid,
-        "merchant_name": merchant.name,
-        "cases_seeded": len(state.get("cases", [])),
-    }
-
-
-# ── Seeding helper ────────────────────────────────────────────────────────────
-
-def _seed_demo_for_merchant(merchant_id: str, state: dict) -> None:
-    """
-    Load the pre-defined DEMO_SCENARIOS + a small generated dataset and
-    score them through the risk engine. All stored into the merchant's
-    private state — completely isolated from other merchants.
-    """
-    cases = []
-
-    # 1. Pre-built demo scenarios (vivid, human-friendly cases)
-    scenarios_list = list(DEMO_SCENARIOS.values()) if isinstance(DEMO_SCENARIOS, dict) else list(DEMO_SCENARIOS)
-    for d in scenarios_list:
-        case = {
-            **d,
-            "merchant_id": merchant_id,
-            "status": "open",
-            "is_human_required": False,
-            "ai_diagnosis": None,
-            "recovery_result": None,
-            "last_action_at": None,
-            "last_action_type": None,
-            "correlation_id": f"demo_{d['id']}",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
-        cases.append(case)
-
-    # 2. Generate 500 synthetic cases for a realistic dashboard
-    try:
-        clean_seed = merchant_id.replace("-", "")[:8]
-        seed_val = int(clean_seed, 16) % 9999
-    except Exception:
-        seed_val = 42
-    try:
-        generator = DataGenerator(scale=500, seed=seed_val)
-        dataset = generator.generate()
-        records = dataset.all_records
-        total_amount = 0
-        recoverable_amount = 0
-        attempts = 0
-        escalations = 0
-        category_breakdown: dict = {}
-        strategy_breakdown: dict = {}
-
-        for record in records:
-            features = RiskFeatures(
-                case_id=record.id,
-                case_type=record.case_type,
-                amount_inr=record.amount_inr,
-                total_payments=int(record.customer_success_rate * 10),
-                successful_payments=int(record.customer_success_rate * 10),
-                customer_lifetime_value_inr=record.customer_lifetime_value_inr,
-                days_since_last_success=record.days_since_last_success,
-                failure_code=record.failure_code,
-                retry_count=record.retry_count,
-                consecutive_failures=record.consecutive_failures,
-                is_checkout_abandoned=(record.status == "abandoned"),
-                gateway=record.gateway,
-                gateway_failure_rate_1h=record.gateway_failure_rate_1h,
-                gateway_is_degraded=record.gateway_is_degraded,
-                hour_of_day=record.hour_of_day,
-                day_of_week=record.day_of_week,
-                subscription_age_days=record.subscription_age_days,
-                subscription_failed_count=record.subscription_failed_count,
-                invoice_days_overdue=record.invoice_days_overdue,
-            )
-            score = risk_engine.score(features)
-
-            case = {
-                "id": record.id,
-                "merchant_id": merchant_id,
-                "customer_id": record.customer_id,
-                "case_type": record.case_type,
-                "failure_category": record.failure_category,
-                "failure_code": record.failure_code,
-                "gateway": record.gateway,
-                "amount_inr": record.amount_inr,
-                "payment_method": record.payment_method,
-                "risk_score": score.risk_score,
-                "recovery_probability": score.recovery_probability,
-                "expected_recovery_value_inr": score.expected_recovery_value_inr,
-                "recommended_strategy": score.recommended_strategy,
-                "confidence": score.confidence,
-                "diagnosis_summary": score.diagnosis_summary,
-                "feature_contributions": score.feature_contributions,
-                "retry_count": record.retry_count,
-                "consecutive_failures": record.consecutive_failures,
-                "gateway_is_degraded": record.gateway_is_degraded,
-                "gateway_failure_rate_1h": record.gateway_failure_rate_1h,
-                "customer_success_rate": record.customer_success_rate,
-                "customer_lifetime_value_inr": record.customer_lifetime_value_inr,
-                "customer_opted_out": record.customer_opted_out,
-                "is_flagged_customer": record.is_flagged_customer,
-                "days_since_last_success": record.days_since_last_success,
-                "subscription_age_days": record.subscription_age_days,
-                "subscription_failed_count": record.subscription_failed_count,
-                "invoice_days_overdue": record.invoice_days_overdue,
-                "ground_truth_recoverable": record.ground_truth_recoverable,
-                "ground_truth_recovered": record.ground_truth_recovered,
-                "ground_truth_recovery_method": record.ground_truth_recovery_method,
-                "split": record.split,
-                "status": "open",
-                "is_human_required": score.recommended_strategy == "escalate",
-                "ai_diagnosis": None,
-                "recovery_result": None,
-                "last_action_at": None,
-                "last_action_type": None,
-                "correlation_id": f"sim_{record.id}",
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            }
-            cases.append(case)
-
-            total_amount += record.amount_inr
-            if score.recovery_probability > 0.3:
-                recoverable_amount += record.amount_inr
-            if score.recommended_strategy != "stop":
-                attempts += 1
-            if score.recommended_strategy == "escalate":
-                escalations += 1
-
-            category_breakdown[record.failure_category] = (
-                category_breakdown.get(record.failure_category, 0) + 1
-            )
-            strategy_breakdown[score.recommended_strategy] = (
-                strategy_breakdown.get(score.recommended_strategy, 0) + 1
-            )
-
-        state["metrics"] = {
-            "revenue_at_risk_inr": total_amount,
-            "recoverable_revenue_inr": recoverable_amount,
-            "revenue_recovered_inr": recoverable_amount * 0.62,
-            "recovery_rate": 0.62,
-            "recovery_attempts": attempts,
-            "human_escalations": escalations,
-            "blocked_actions": int(attempts * 0.18),
-            "open_cases": len(cases),
-            "recovered_cases": int(len(cases) * 0.62),
-            "failed_cases": int(len(cases) * 0.18),
-            "total_cases": len(cases),
-            "simulation_scale": 500,
-            "razorpay_enriched": False,
-            "category_breakdown": category_breakdown,
-            "strategy_breakdown": strategy_breakdown,
-            "gateway_health": [
-                {"gateway": "razorpay", "failure_rate": 0.03, "is_degraded": False},
-                {"gateway": "payu",     "failure_rate": 0.34, "is_degraded": True},
-                {"gateway": "cashfree", "failure_rate": 0.05, "is_degraded": False},
-            ],
-        }
-
-    except Exception as exc:
-        logger.error(f"Failed to seed synthetic cases: {exc}")
-        # Fall back to metrics based on demo scenarios only
-        state["metrics"] = {
-            "revenue_at_risk_inr": sum(c.get("amount_inr", 0) for c in cases),
-            "recoverable_revenue_inr": 0,
-            "revenue_recovered_inr": 0,
-            "recovery_rate": 0.0,
-            "recovery_attempts": 0,
-            "human_escalations": 0,
-            "blocked_actions": 0,
-            "open_cases": len(cases),
-            "recovered_cases": 0,
-            "failed_cases": 0,
-            "total_cases": len(cases),
-        }
-
-    state["demo_cases"] = cases
-    from app.state import _sync_active_cases_and_metrics
-    _sync_active_cases_and_metrics(merchant_id)

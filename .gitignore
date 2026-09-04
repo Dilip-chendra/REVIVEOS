@@ -59,6 +59,14 @@ Thumbs.db
 # ── Logs ──────────────────────────────────────────────────────────────────────
 *.log
 logs/
+backend_endpoint_audit.json
+e2e_audit_report.json
+page_audit_findings.json
+scratch_inventory.json
+frontend_button_inventory.txt
+e2e_screenshots/
+redesign_screenshots/
 
 # ── Docker ────────────────────────────────────────────────────────────────────
 docker-compose.override.yml
+

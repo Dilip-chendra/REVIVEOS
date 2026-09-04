@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { getRecoveryOpportunities, getDemoScenarios, getRazorpayStatus } from "../api/client";
 import { ChevronRight, Users, TrendingUp, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAppMode } from "../context/AppModeContext";
+import EmptyWorkspaceState from "../components/EmptyWorkspaceState";
 
 const fmt = (v: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(v);
@@ -36,6 +38,7 @@ const SEGMENT_COLOR: Record<string, string> = {
 };
 
 export default function Customers() {
+  const { isRealMode } = useAppMode();
   const [customers, setCustomers] = useState<CustomerGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeSegment, setActiveSegment] = useState<string>("all");
@@ -51,7 +54,7 @@ export default function Customers() {
         const isProv = pStatus?.active_environment === "RAZORPAY_TEST" || pStatus?.active_environment === "RAZORPAY_LIVE" || pStatus?.is_real_provider_data;
         
         let list = opps || [];
-        if (!isProv && list.length === 0) {
+        if (!isProv && !isRealMode && list.length === 0) {
           list = await getDemoScenarios().catch(() => []);
         }
         // Group by customer_id
@@ -177,17 +180,24 @@ export default function Customers() {
             </div>
 
             {filtered.length === 0 ? (
-              <div style={{ padding: "60px 24px", textAlign: "center", color: "var(--text-tertiary)" }}>
-                <Users size={32} style={{ margin: "0 auto 12px", opacity: 0.4 }} />
-                <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--text-primary)", marginBottom: "6px" }}>
-                  {isProviderMode ? "No Customer Transaction Profiles Available Yet" : "No customer accounts found"}
+              isRealMode ? (
+                <div style={{ padding: "40px 24px" }}>
+                  <EmptyWorkspaceState
+                    title="NO REAL CUSTOMERS AT RISK"
+                    subtitle="Your connected Razorpay workspace has zero active customer payment anomalies. As payments process through your Razorpay rails, customer profiles will automatically appear here."
+                  />
                 </div>
-                <div style={{ fontSize: "0.875rem", maxWidth: "560px", margin: "0 auto", lineHeight: 1.5, color: "var(--text-secondary)" }}>
-                  {isProviderMode
-                    ? "Razorpay is connected successfully, but this account currently has no payment records available for customer-level analysis. Once payments arrive, ReviveOS will automatically compute customer lifetime values, payment histories, failure patterns, and recovery opportunities."
-                    : "Reset demo scenarios in the topbar to reload customer profiles."}
+              ) : (
+                <div style={{ padding: "60px 24px", textAlign: "center", color: "var(--text-tertiary)" }}>
+                  <Users size={32} style={{ margin: "0 auto 12px", opacity: 0.4 }} />
+                  <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--text-primary)", marginBottom: "6px" }}>
+                    No customer accounts found
+                  </div>
+                  <div style={{ fontSize: "0.875rem", maxWidth: "560px", margin: "0 auto", lineHeight: 1.5, color: "var(--text-secondary)" }}>
+                    Reset demo scenarios in the topbar to reload customer profiles.
+                  </div>
                 </div>
-              </div>
+              )
             ) : (
               filtered.map((c, i) => (
                 <motion.div key={c.id} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}

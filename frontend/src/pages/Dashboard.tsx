@@ -128,7 +128,11 @@ export default function Dashboard() {
           recovery_budget_inr: budgetSlider,
           contact_limit: contactSlider,
         });
-      } catch (err) {
+      } catch (err: any) {
+        if (isRealMode) {
+          console.error("triggerSettlement failed in Real Mode:", err);
+          return;
+        }
         console.warn("triggerSettlement fallback:", err);
         res = {
           settled: true,
@@ -159,7 +163,13 @@ export default function Dashboard() {
       let res: any;
       try {
         res = await executePortfolioBatch({ max_execute_count: 10 });
-      } catch (err) {
+      } catch (err: any) {
+        if (isRealMode) {
+          console.error("executePortfolioBatch failed in Real Mode:", err);
+          setBatchSuccessMessage(`Real Mode Batch Error: ${err?.response?.data?.detail || err.message || "Failed to execute batch"}`);
+          setTimeout(() => setBatchSuccessMessage(null), 6000);
+          return;
+        }
         console.warn("executePortfolioBatch fallback:", err);
         res = {
           executed_count: Math.min(pursueCount || 5, 10),
@@ -167,7 +177,7 @@ export default function Dashboard() {
           status: "BATCH_DISPATCHED",
         };
       }
-      const batchAmt = res.total_recovered_inr || 82500;
+      const batchAmt = res.total_recovered_inr || (isRealMode ? 0 : 82500);
       setSessionRecoveredINR(prev => prev + batchAmt);
       setBatchSuccessMessage(`Dispatched ${res.executed_count} HMAC Signed Action Contracts. Recovered ₹${batchAmt.toLocaleString("en-IN")}! Top metrics updated.`);
       setTimeout(() => setBatchSuccessMessage(null), 6000);

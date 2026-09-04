@@ -320,6 +320,77 @@ class RazorpayService:
                 "message": structured_err.user_message,
             }
 
+    def test_credentials_direct(self, key_id: str, key_secret: str) -> dict[str, Any]:
+        """
+        Directly authenticate with Razorpay API using raw credentials without requiring prior storage.
+        Used during real workspace onboarding to verify credentials before committing them.
+        """
+        clean_key = (key_id or "").strip()
+        clean_secret = (key_secret or "").strip()
+
+        if not clean_key or not clean_secret:
+            err = make_error("CREDENTIALS_MISSING")
+            return {
+                "success": False,
+                "connected": False,
+                "environment": "none",
+                "error": err.user_message,
+                "error_detail": err.detail,
+                "error_code": err.code,
+            }
+
+        try:
+            clean_key.encode("latin-1")
+            clean_secret.encode("latin-1")
+        except UnicodeEncodeError:
+            return {
+                "success": False,
+                "connected": False,
+                "environment": "none",
+                "error": "Key ID or Secret contains non-ASCII characters.",
+                "error_code": "AUTH_INVALID",
+            }
+
+        environment = "live" if clean_key.startswith("rzp_live_") else "test"
+        start_time = time.time()
+        try:
+            import razorpay
+            client = razorpay.Client(auth=(clean_key, clean_secret))
+            try:
+                if hasattr(client, "session"):
+                    client.session.timeout = _API_TIMEOUT_SECONDS
+                elif hasattr(client, "_session"):
+                    client._session.timeout = _API_TIMEOUT_SECONDS
+            except Exception:
+                pass
+
+            res = client.payment.all({"count": 1})
+            latency_ms = int((time.time() - start_time) * 1000)
+            return {
+                "success": True,
+                "connected": True,
+                "environment": environment,
+                "key_id_masked": credential_store.mask_key_id(clean_key),
+                "latency_ms": latency_ms,
+                "total_accessible": res.get("count", 0),
+                "message": f"Successfully verified Razorpay {environment.upper()} credentials in {latency_ms}ms.",
+            }
+        except Exception as e:
+            latency_ms = int((time.time() - start_time) * 1000)
+            structured_err = classify_razorpay_exception(e)
+            return {
+                "success": False,
+                "connected": False,
+                "environment": environment,
+                "key_id_masked": credential_store.mask_key_id(clean_key),
+                "latency_ms": latency_ms,
+                "error": structured_err.user_message,
+                "error_detail": structured_err.detail,
+                "error_code": structured_err.code,
+                "recommended_action": structured_err.recommended_action,
+                "message": structured_err.user_message,
+            }
+
     # ── Paginated Fetching ───────────────────────────────────────────────────
 
     @_with_retry

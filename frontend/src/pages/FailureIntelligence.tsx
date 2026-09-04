@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getDemoScenarios, getRazorpayStatus, getRiskCases } from "../api/client";
+import { useAppMode } from "../context/AppModeContext";
 
 const formatINR = (value: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
@@ -19,6 +20,7 @@ const TAXONOMY_LIST = [
 ];
 
 export default function FailureIntelligence() {
+  const { isRealMode } = useAppMode();
   const [scenarios, setScenarios] = useState<any[]>([]);
   const [selectedCaseId, setSelectedCaseId] = useState<string>("");
   const [providerStatus, setProviderStatus] = useState<any>(null);
@@ -27,7 +29,7 @@ export default function FailureIntelligence() {
     getRazorpayStatus().then(status => {
       setProviderStatus(status);
       const isProv = status?.active_environment === "RAZORPAY_TEST" || status?.active_environment === "RAZORPAY_LIVE" || status?.is_real_provider_data;
-      if (isProv) {
+      if (isProv || isRealMode) {
         getRiskCases(1, 10).then(cases => {
           setScenarios(cases || []);
           if (cases && cases.length > 0) setSelectedCaseId(cases[0].id);
@@ -43,15 +45,17 @@ export default function FailureIntelligence() {
           .catch((err) => console.error(err));
       }
     }).catch(() => {
-      getDemoScenarios()
-        .then((cases) => {
-          if (cases && cases.length > 0) {
-            setScenarios(cases);
-            setSelectedCaseId(cases[0].id);
-          }
-        });
+      if (!isRealMode) {
+        getDemoScenarios()
+          .then((cases) => {
+            if (cases && cases.length > 0) {
+              setScenarios(cases);
+              setSelectedCaseId(cases[0].id);
+            }
+          });
+      }
     });
-  }, []);
+  }, [isRealMode]);
 
   const isProviderMode = providerStatus?.active_environment === "RAZORPAY_TEST" || providerStatus?.active_environment === "RAZORPAY_LIVE" || providerStatus?.is_real_provider_data;
   const activeCase = scenarios.find((c) => c.id === selectedCaseId) || scenarios[0];

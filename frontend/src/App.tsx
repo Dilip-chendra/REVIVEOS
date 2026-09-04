@@ -2,7 +2,7 @@ import { Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
-import { Settings, LogOut, Zap, Code2, Sparkles, Scale, ShieldCheck, Menu, X } from "lucide-react";
+import { Settings, LogOut, Zap, Code2, Sparkles, Scale, ShieldCheck, Menu, X, Building2 } from "lucide-react";
 import { resetDemo, getOnboardingStatus, getRazorpayStatus, syncRazorpayNow } from "./api/client";
 import Landing from "./pages/Landing";
 import OnboardingWizard from "./pages/OnboardingWizard";
@@ -12,9 +12,11 @@ import ExecutiveComplianceModal from "./components/ExecutiveComplianceModal";
 import JudgeDefenseModal from "./components/JudgeDefenseModal";
 import RazorpayConnectionModal from "./components/RazorpayConnectionModal";
 import RawProviderInspectorModal from "./components/RawProviderInspectorModal";
+import RealWorkspaceGateway from "./components/RealWorkspaceGateway";
 import { SidebarAccordion } from "./components/SidebarAccordion";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { AppModeProvider, useAppMode } from "./context/AppModeContext";
+import { WorkspaceProvider, useWorkspace } from "./context/WorkspaceContext";
 
 import { lazyRetry } from "./utils/lazyRetry";
 
@@ -89,6 +91,13 @@ function PageTransition({ children }: { children: React.ReactNode }) {
 
 function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
   const { isDemoMode, isRealMode, setMode } = useAppMode();
+  const {
+    workspace,
+    onboardingState,
+    razorpayStatus: wsRazorpayStatus,
+    dataCounts,
+    refreshWorkspace,
+  } = useWorkspace();
   const [showPitch, setShowPitch] = useState(false);
   const [showCompliance, setShowCompliance] = useState(false);
   const [showDefense, setShowDefense] = useState(false);
@@ -121,9 +130,9 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const currentEnv = isRealMode
-    ? (razorpayStatus?.active_environment && razorpayStatus.active_environment !== "DEMO" ? razorpayStatus.active_environment : "RAZORPAY_TEST")
+    ? (wsRazorpayStatus?.environment || (razorpayStatus?.active_environment && razorpayStatus.active_environment !== "DEMO" ? razorpayStatus.active_environment : "RAZORPAY_TEST"))
     : "DEMO";
-  const isConnected = razorpayStatus?.is_configured;
+  const isConnected = wsRazorpayStatus?.connected || wsRazorpayStatus?.is_configured || razorpayStatus?.is_configured;
 
   return (
     <div className="page-shell">
@@ -284,17 +293,45 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
               </button>
             </div>
 
+            {/* Real Workspace Indicator */}
+            {isRealMode && (
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "4px 10px",
+                  borderRadius: "8px",
+                  background: "rgba(56, 189, 248, 0.08)",
+                  border: "1px solid rgba(56, 189, 248, 0.25)",
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  color: "#E2E8F0",
+                  whiteSpace: "nowrap",
+                }}
+                title={workspace ? `Workspace: ${workspace.name} (${workspace.business_type})` : "Workspace"}
+              >
+                <Building2 size={13} color="#38BDF8" />
+                <span>{workspace?.name || "Active Workspace"}</span>
+                {dataCounts && (
+                  <span style={{ fontSize: "0.68rem", color: "#94A3B8", marginLeft: 2 }}>
+                    ({dataCounts.payments}p · {dataCounts.subscriptions}s)
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Provider Connection Indicator / Trigger */}
             <button
               type="button"
               className="razorpay-topbar-btn"
               onClick={() => setShowRazorpayModal(true)}
-              title={isConnected ? `Connected: ${razorpayStatus?.credentials?.key_id_masked || "Active"} • Click to configure` : "Connect your Razorpay account"}
+              title={isConnected ? `Connected: ${wsRazorpayStatus?.key_id_masked || razorpayStatus?.credentials?.key_id_masked || "Active"} • Click to configure` : "Connect your Razorpay account"}
               style={{
                 background: isConnected
                   ? "linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.05) 100%)"
-                  : "linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(37, 99, 235, 0.05) 100%)",
-                border: `1px solid ${isConnected ? "rgba(16, 185, 129, 0.35)" : "rgba(59, 130, 246, 0.35)"}`,
+                  : "linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.05) 100%)",
+                border: `1px solid ${isConnected ? "rgba(16, 185, 129, 0.35)" : "rgba(245, 158, 11, 0.35)"}`,
                 boxShadow: isConnected ? "0 0 12px rgba(16, 185, 129, 0.18)" : "none",
               }}
             >
@@ -319,20 +356,20 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                     width: 7,
                     height: 7,
                     borderRadius: "50%",
-                    backgroundColor: isConnected ? "#10B981" : "#60A5FA",
+                    backgroundColor: isConnected ? "#10B981" : "#F59E0B",
                   }}
                 />
               </span>
 
               {/* Razorpay Brand Icon */}
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M14.5 2L5 13H12L9.5 22L19 11H12L14.5 2Z" fill={isConnected ? "#10B981" : "#60A5FA"} />
+                <path d="M14.5 2L5 13H12L9.5 22L19 11H12L14.5 2Z" fill={isConnected ? "#10B981" : "#F59E0B"} />
               </svg>
 
               <span style={{
                 fontWeight: 700,
                 fontSize: "0.74rem",
-                color: isConnected ? "#34D399" : "#93C5FD",
+                color: isConnected ? "#34D399" : "#FCD34D",
                 letterSpacing: "0.01em",
               }}>
                 {isConnected ? "Razorpay Connected" : "Connect Razorpay"}
@@ -349,7 +386,7 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                   fontWeight: 700,
                   letterSpacing: "0.04em",
                 }}>
-                  {razorpayStatus?.credentials?.environment === "live" ? "LIVE" : "TEST"}
+                  {wsRazorpayStatus?.environment || (razorpayStatus?.credentials?.environment === "live" ? "LIVE" : "TEST")}
                 </span>
               )}
             </button>
@@ -529,7 +566,7 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#10B981", boxShadow: "0 0 6px #10B981" }} />
-              <span><strong>REAL MODE (Razorpay Test Environment)</strong>: Authenticated against live Razorpay Test rails ({razorpayStatus?.credentials?.key_id_masked || "rzp_test_TVw..."}). Demo data is completely disabled.</span>
+              <span><strong>REAL WORKSPACE ({workspace?.name || "Acme Technologies"})</strong>: Authenticated against live Razorpay Test rails ({wsRazorpayStatus?.key_id_masked || razorpayStatus?.credentials?.key_id_masked || "rzp_test_..."}). Demo data is completely disabled. {dataCounts ? `• ${dataCounts.payments} Payments • ${dataCounts.subscriptions} Subscriptions • ${dataCounts.recovery_cases} Active Cases` : ""}</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <span style={{ fontSize: "11px", color: "#A7F3D0", background: "rgba(16, 185, 129, 0.15)", padding: "2px 8px", borderRadius: "4px", fontWeight: 700 }}>
@@ -539,6 +576,7 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                 onClick={async () => {
                   try {
                     await syncRazorpayNow();
+                    await refreshWorkspace();
                     window.location.reload();
                   } catch (e) {
                     console.error(e);
@@ -555,57 +593,61 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
         {/* Content */}
         <main className="page-content">
           <ErrorBoundary section="ReviveOS Workspace">
-            <Suspense fallback={<PageLoader />}>
-              <PageTransition>
-                <Routes>
-                  <Route path="/"                      element={<Dashboard />} />
-                  <Route path="/recovery-experiments"  element={<RecoveryExperimentLab />} />
-                  <Route path="/opportunities"         element={<OpportunityQueue />} />
-                  <Route path="/communications"        element={<CommunicationQueue />} />
-                  <Route path="/automation"            element={<AutonomyCenter />} />
-                  <Route path="/autonomy"              element={<AutonomyCenter />} />
-                  <Route path="/payouts"               element={<PayoutControlCenter />} />
-                  <Route path="/collision-lab"         element={<CollisionLab />} />
-                  <Route path="/toctou"                element={<ToctouSimulator />} />
-                  <Route path="/recovery-arena"        element={<RecoveryArena />} />
-                  <Route path="/counterfactual-lab"    element={<CounterfactualLab />} />
-                  <Route path="/policy-studio"         element={<PolicyStudio />} />
-                  <Route path="/judge-mode"            element={<JudgeMode />} />
-                  <Route path="/chaos-lab"             element={<ChaosLab />} />
-                  <Route path="/gateway-commander"     element={<GatewayCommander />} />
-                  <Route path="/experiments"           element={<Experiments />} />
-                  <Route path="/recruiter-audit"       element={<RecruiterView />} />
-                  <Route path="/copilot"               element={<RevenueCopilot />} />
-                  <Route path="/webhook-studio"        element={<WebhookStudio />} />
-                  <Route path="/risk"                  element={<RiskView />} />
-                  <Route path="/risk/:id"              element={<CaseDetail />} />
-                  <Route path="/case/:id"              element={<CaseDetail />} />
-                  <Route path="/human-review"          element={<HumanReview />} />
-                  <Route path="/failure-intelligence"  element={<FailureIntelligence />} />
-                  <Route path="/intelligence"          element={<IntelligencePage />} />
-                  <Route path="/gateway-intelligence"  element={<GatewayIntelligence />} />
-                  <Route path="/customers"             element={<Customers />} />
-                  <Route path="/calculator"            element={<RoiCalculator />} />
-                  <Route path="/impact"                element={<Impact />} />
-                  <Route path="/insights"              element={<Insights />} />
-                  <Route path="/security"              element={<SecurityCenter />} />
-                  <Route path="/audit"                 element={<AuditTrail />} />
-                  <Route path="/integrations"          element={<DeveloperHub />} />
-                  <Route path="/evaluator"             element={<EvaluatorMode />} />
-                  <Route path="/evaluation"            element={<Evaluation />} />
-                  <Route path="/settings"              element={<SettingsPage />} />
-                  <Route path="/recovery"              element={<OpportunityQueue />} />
-                  <Route path="/queue"                 element={<OpportunityQueue />} />
-                  <Route path="/portfolio"             element={<OpportunityQueue />} />
-                  <Route path="/cases"                 element={<OpportunityQueue />} />
-                  <Route path="/desk"                  element={<Dashboard />} />
-                  <Route path="/dashboard"             element={<Dashboard />} />
-                  <Route path="/simulator"             element={<CounterfactualLab />} />
-                  <Route path="/developers"            element={<DeveloperHub />} />
-                  <Route path="*"                      element={<Dashboard />} />
-                </Routes>
-              </PageTransition>
-            </Suspense>
+            {isRealMode && onboardingState !== "WORKSPACE_READY" ? (
+              <RealWorkspaceGateway />
+            ) : (
+              <Suspense fallback={<PageLoader />}>
+                <PageTransition>
+                  <Routes>
+                    <Route path="/"                      element={<Dashboard />} />
+                    <Route path="/recovery-experiments"  element={<RecoveryExperimentLab />} />
+                    <Route path="/opportunities"         element={<OpportunityQueue />} />
+                    <Route path="/communications"        element={<CommunicationQueue />} />
+                    <Route path="/automation"            element={<AutonomyCenter />} />
+                    <Route path="/autonomy"              element={<AutonomyCenter />} />
+                    <Route path="/payouts"               element={<PayoutControlCenter />} />
+                    <Route path="/collision-lab"         element={<CollisionLab />} />
+                    <Route path="/toctou"                element={<ToctouSimulator />} />
+                    <Route path="/recovery-arena"        element={<RecoveryArena />} />
+                    <Route path="/counterfactual-lab"    element={<CounterfactualLab />} />
+                    <Route path="/policy-studio"         element={<PolicyStudio />} />
+                    <Route path="/judge-mode"            element={<JudgeMode />} />
+                    <Route path="/chaos-lab"             element={<ChaosLab />} />
+                    <Route path="/gateway-commander"     element={<GatewayCommander />} />
+                    <Route path="/experiments"           element={<Experiments />} />
+                    <Route path="/recruiter-audit"       element={<RecruiterView />} />
+                    <Route path="/copilot"               element={<RevenueCopilot />} />
+                    <Route path="/webhook-studio"        element={<WebhookStudio />} />
+                    <Route path="/risk"                  element={<RiskView />} />
+                    <Route path="/risk/:id"              element={<CaseDetail />} />
+                    <Route path="/case/:id"              element={<CaseDetail />} />
+                    <Route path="/human-review"          element={<HumanReview />} />
+                    <Route path="/failure-intelligence"  element={<FailureIntelligence />} />
+                    <Route path="/intelligence"          element={<IntelligencePage />} />
+                    <Route path="/gateway-intelligence"  element={<GatewayIntelligence />} />
+                    <Route path="/customers"             element={<Customers />} />
+                    <Route path="/calculator"            element={<RoiCalculator />} />
+                    <Route path="/impact"                element={<Impact />} />
+                    <Route path="/insights"              element={<Insights />} />
+                    <Route path="/security"              element={<SecurityCenter />} />
+                    <Route path="/audit"                 element={<AuditTrail />} />
+                    <Route path="/integrations"          element={<DeveloperHub />} />
+                    <Route path="/evaluator"             element={<EvaluatorMode />} />
+                    <Route path="/evaluation"            element={<Evaluation />} />
+                    <Route path="/settings"              element={<SettingsPage />} />
+                    <Route path="/recovery"              element={<OpportunityQueue />} />
+                    <Route path="/queue"                 element={<OpportunityQueue />} />
+                    <Route path="/portfolio"             element={<OpportunityQueue />} />
+                    <Route path="/cases"                 element={<OpportunityQueue />} />
+                    <Route path="/desk"                  element={<Dashboard />} />
+                    <Route path="/dashboard"             element={<Dashboard />} />
+                    <Route path="/simulator"             element={<CounterfactualLab />} />
+                    <Route path="/developers"            element={<DeveloperHub />} />
+                    <Route path="*"                      element={<Dashboard />} />
+                  </Routes>
+                </PageTransition>
+              </Suspense>
+            )}
           </ErrorBoundary>
         </main>
       </div>
@@ -704,21 +746,23 @@ export default function App() {
 
   return (
     <AppModeProvider>
-      <BrowserRouter>
-        <SignedIn>
-          {/* Real Authenticated ReviveOS Workspace (Clerk verified) */}
-          <AuthenticatedApp onExitDemo={hasEnteredWorkspace ? handleExitWorkspace : undefined} />
-        </SignedIn>
-        <SignedOut>
-          {hasEnteredWorkspace ? (
-            /* Synthetic NovaCart Evaluation Universe or Real Test Sandbox */
-            <AuthenticatedApp onExitDemo={handleExitWorkspace} />
-          ) : (
-            /* Public Landing Page & Clerk Auth Gateway */
-            <Landing onEnterDemo={handleEnterWorkspace} />
-          )}
-        </SignedOut>
-      </BrowserRouter>
+      <WorkspaceProvider>
+        <BrowserRouter>
+          <SignedIn>
+            {/* Real Authenticated ReviveOS Workspace (Clerk verified) */}
+            <AuthenticatedApp onExitDemo={hasEnteredWorkspace ? handleExitWorkspace : undefined} />
+          </SignedIn>
+          <SignedOut>
+            {hasEnteredWorkspace ? (
+              /* Synthetic NovaCart Evaluation Universe or Real Test Sandbox */
+              <AuthenticatedApp onExitDemo={handleExitWorkspace} />
+            ) : (
+              /* Public Landing Page & Clerk Auth Gateway */
+              <Landing onEnterDemo={handleEnterWorkspace} />
+            )}
+          </SignedOut>
+        </BrowserRouter>
+      </WorkspaceProvider>
     </AppModeProvider>
   );
 }

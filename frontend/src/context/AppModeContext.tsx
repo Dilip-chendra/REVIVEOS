@@ -49,13 +49,10 @@ export const AppModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       setCurrentModeState(newMode);
       localStorage.setItem(MODE_STORAGE_KEY, newMode);
-      // Top MNC persistence: keep workspace session and onboarding flags active across mode toggles
-      localStorage.setItem('revive_session_active', 'true');
-      localStorage.setItem('revive_onboarded', 'true');
-
       if (newMode === 'real') {
         // Strict Real Mode: set real test environment
         localStorage.setItem(ENV_STORAGE_KEY, 'RAZORPAY_TEST');
+        localStorage.removeItem(LEGACY_DEMO_KEY);
         try {
           await switchEnvironment('RAZORPAY_TEST');
         } catch (_) {}
@@ -83,10 +80,9 @@ export const AppModeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Synchronize storage on mount
   useEffect(() => {
     localStorage.setItem(MODE_STORAGE_KEY, currentMode);
-    localStorage.setItem('revive_session_active', 'true');
-    localStorage.setItem('revive_onboarded', 'true');
     if (currentMode === 'real') {
       localStorage.setItem(ENV_STORAGE_KEY, 'RAZORPAY_TEST');
+      localStorage.removeItem(LEGACY_DEMO_KEY);
     } else {
       localStorage.setItem(LEGACY_DEMO_KEY, 'true');
       localStorage.setItem(ENV_STORAGE_KEY, 'DEMO');

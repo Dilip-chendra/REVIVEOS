@@ -296,6 +296,25 @@ export const callMcpTool = (body: { tool_name: string; arguments: Record<string,
 
 // ── Onboarding & Merchant ─────────────────────────────────────────────────────
 export const getOnboardingStatus = () => api.get('/onboarding/status').then(r => r.data);
+export const saveWorkspaceBusinessProfile = (body: {
+  business_name: string;
+  business_type: string;
+  industry?: string;
+  currency?: string;
+  country?: string;
+  monthly_gmv_inr?: number;
+  average_order_value_inr?: number;
+  primary_recovery_goals?: string;
+  primary_payment_types?: string;
+  business_size?: string;
+}) => api.post('/onboarding/business-profile', body).then(r => r.data);
+export const connectWorkspaceRazorpay = (body: {
+  key_id: string;
+  key_secret: string;
+  environment?: string;
+  webhook_secret?: string;
+}) => api.post('/onboarding/connect-razorpay', body).then(r => r.data);
+export const createWorkspaceTestScenario = () => api.post('/onboarding/create-test-scenario').then(r => r.data);
 export const completeOnboarding  = (body: any) => api.post('/onboarding/complete', body).then(r => r.data);
 export const skipOnboarding      = () => api.post('/onboarding/skip').then(r => r.data);
 export const getMyMerchant       = () => api.get('/merchant/me').then(r => r.data);
