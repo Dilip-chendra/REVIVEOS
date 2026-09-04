@@ -292,7 +292,7 @@ export default function LiveRazorpayLinkModal({
                   ) : (
                     <>
                       <Zap size={15} />
-                      <span>⚡ GENERATE REAL RAZORPAY PAYMENT LINK</span>
+                      <span>GENERATE REAL RAZORPAY PAYMENT LINK</span>
                     </>
                   )}
                 </button>

@@ -363,9 +363,6 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                 />
               </span>
 
-              {/* Razorpay Brand Glyph */}
-              <RazorpayLogo type="glyph" height={13} variant="white" />
-
               <span style={{
                 fontWeight: 700,
                 fontSize: "0.74rem",
@@ -373,9 +370,9 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                 letterSpacing: "0.01em",
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "4px",
+                gap: "5px",
               }}>
-                <RazorpayLogo height={11} variant="white" />: {isConnected
+                <RazorpayLogo height={12} variant="white" />: {isConnected
                   ? (wsRazorpayStatus?.environment?.toLowerCase() === "live" || razorpayStatus?.credentials?.environment === "live"
                       ? "CONNECTED · LIVE"
                       : "CONNECTED · TEST")

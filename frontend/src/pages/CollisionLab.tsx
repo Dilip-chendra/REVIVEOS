@@ -296,7 +296,7 @@ export const CollisionLab: React.FC = () => {
             }}
           >
             <Zap size={15} color="#10B981" />
-            <span>⚡ TEST REAL RAZORPAY LINK</span>
+            <span>TEST REAL RAZORPAY LINK</span>
           </button>
 
           <button

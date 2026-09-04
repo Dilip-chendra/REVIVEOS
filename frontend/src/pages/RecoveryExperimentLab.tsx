@@ -630,7 +630,7 @@ export default function RecoveryExperimentLab() {
                       }}
                     >
                       <Zap size={12} />
-                      <span>⚡ Test on Live Razorpay Link</span>
+                      <span>Test on Live Razorpay Link</span>
                     </button>
                   </div>
                 </>

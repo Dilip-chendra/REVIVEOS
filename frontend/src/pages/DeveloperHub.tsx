@@ -315,7 +315,7 @@ curl -X POST ${API_BASE_URL || 'http://localhost:8000'}/api/agents/proposals \\
             }}
           >
             <Zap size={14} />
-            <span>⚡ TEST REAL RAZORPAY LINK</span>
+            <span>TEST REAL RAZORPAY LINK</span>
           </button>
         </div>
       </div>
@@ -440,7 +440,7 @@ curl -X POST ${API_BASE_URL || 'http://localhost:8000'}/api/agents/proposals \\
             style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontSize: "12px", padding: "10px" }}
           >
             {runningCollision ? <RefreshCw size={14} className="spin" /> : <Play size={14} />}
-            {runningCollision ? "Executing 3 Agent Requests..." : "⚡ Run Real 3-Agent Collision Test"}
+            {runningCollision ? "Executing 3 Agent Requests..." : "Run Real 3-Agent Collision Test"}
           </button>
 
           {collisionResult && (
@@ -654,7 +654,7 @@ curl -X POST ${API_BASE_URL || 'http://localhost:8000'}/api/agents/proposals \\
                     }}
                   >
                     <Zap size={11} />
-                    <span>⚡ EXECUTE ON LIVE RAZORPAY RAILS</span>
+                    <span>EXECUTE ON LIVE RAZORPAY RAILS</span>
                   </button>
                 </div>
                 <div style={{ fontSize: "11px", color: "#94A3B8" }}>

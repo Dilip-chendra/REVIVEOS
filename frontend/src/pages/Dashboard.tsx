@@ -1130,7 +1130,7 @@ export default function Dashboard() {
               {providerStatus?.is_configured ? (
                 <>
                   <button onClick={() => setShowLiveLinkModal(true)} className="btn btn-primary" style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", background: "linear-gradient(135deg, #00F0FF 0%, #0099FF 100%)", color: "#040711", fontWeight: 800 }}>
-                    <Zap size={14} /> ⚡ Generate Live Razorpay Link (Real API Sandbox)
+                    <Zap size={14} /> Generate Live Razorpay Link (Real API Sandbox)
                   </button>
                   <button onClick={fetchInitialData} className="btn btn-secondary" style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px" }}>
                     <RefreshCw size={13} /> Sync Live Activity
