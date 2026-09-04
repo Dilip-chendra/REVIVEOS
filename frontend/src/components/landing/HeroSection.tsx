@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { ArrowRight, CheckCircle2, Zap, Brain, ShieldCheck, TrendingUp, AlertCircle } from "lucide-react";
+import { DynamicHeroText } from "./DynamicHeroText";
 
 interface HeroSectionProps {
   onGetStarted: () => void;
@@ -44,16 +45,9 @@ export default function HeroSection({ onGetStarted }: HeroSectionProps) {
             <span className="text-[11px] font-bold tracking-widest uppercase">AI-Powered Revenue Recovery</span>
           </motion.div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.08 }}
-            className="font-extrabold tracking-tight leading-[1.08] mb-5 text-white"
-            style={{ fontSize: "clamp(2.4rem, 5.5vw, 4.2rem)" }}
-          >
-            Recover revenue<br />
-            <span style={{ color: "var(--clr-text-secondary)" }}>before it disappears.</span>
-          </motion.h1>
+          <div className="mb-6 w-full text-left" style={{ textAlign: "left" }}>
+            <DynamicHeroText style={{ alignItems: "flex-start", textAlign: "left" }} />
+          </div>
 
           <motion.p
             initial={{ opacity: 0, y: 14 }}

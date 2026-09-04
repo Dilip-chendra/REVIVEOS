@@ -13,6 +13,7 @@ import { DecisionReceiptView } from "../components/landing/DecisionReceiptView";
 import { ProviderTruthWidget } from "../components/landing/ProviderTruthWidget";
 import { ModuleMatrix } from "../components/landing/ModuleMatrix";
 import { ConversionTerminal } from "../components/landing/ConversionTerminal";
+import { DynamicHeroText } from "../components/landing/DynamicHeroText";
 import Footer from "../components/landing/Footer";
 // ── New Championship Sections ─────────────────────────────────────────────────
 import { FiveQuestionsSection } from "../components/landing/FiveQuestionsSection";
@@ -160,9 +161,7 @@ export default function Landing({ onEnterDemo }: LandingProps) {
             </span>
           </div>
 
-          <h1 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2.5rem, 5.5vw, 4.5rem)", fontWeight: 900, lineHeight: 1.06, letterSpacing: "-0.035em", color: "#EEF1F8", maxWidth: "980px", margin: 0 }}>
-            Stop autonomous agents from <span style={{ background: "linear-gradient(135deg, #FF0055 0%, #FF5500 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>colliding over your revenue.</span>
-          </h1>
+          <DynamicHeroText />
 
           <p style={{ fontSize: "clamp(1rem, 1.8vw, 1.25rem)", color: "#8E9BB0", maxWidth: "800px", lineHeight: 1.6, margin: 0, fontWeight: 400 }}>
             Enterprises deploy multiple AI agents for cart abandonment, renewals, and dunning. Without a central economic arbiter, they over-contact customers, erode margins with unnecessary discounts, and trigger race conditions. ReviveOS coordinates them all.
