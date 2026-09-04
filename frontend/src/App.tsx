@@ -2,7 +2,7 @@ import { Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
-import { Settings, LogOut, Zap, Code2, Sparkles, Scale, ShieldCheck, Menu, X, Building2 } from "lucide-react";
+import { Settings, LogOut, Zap, Code2, ShieldCheck, Menu, X, Building2 } from "lucide-react";
 import { resetDemo, getOnboardingStatus, getRazorpayStatus, syncRazorpayNow } from "./api/client";
 import Landing from "./pages/Landing";
 import OnboardingWizard from "./pages/OnboardingWizard";
@@ -409,31 +409,6 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
 
           {/* Right Group: Presentation, Actions, & Profile */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            {/* Pitch Deck */}
-            <motion.button
-              onClick={() => setShowPitch(true)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              className="btn btn-secondary btn-sm"
-              title="Open Investor Pitch Deck"
-              style={{ fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "5px", padding: "5px 10px", whiteSpace: "nowrap" }}
-            >
-              <Sparkles size={13} color="var(--accent)" />
-              <span className="topbar-label-desktop">Pitch Deck</span>
-            </motion.button>
-
-            {/* Judge Q&A */}
-            <motion.button
-              onClick={() => setShowDefense(true)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              className="btn btn-secondary btn-sm"
-              title="Open Judge Defense & Architecture Q&A"
-              style={{ fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "5px", padding: "5px 10px", whiteSpace: "nowrap" }}
-            >
-              <Scale size={13} color="var(--warning-text)" />
-              <span className="topbar-label-desktop">Judge Q&A</span>
-            </motion.button>
 
             {/* Board Proof */}
             <motion.button
