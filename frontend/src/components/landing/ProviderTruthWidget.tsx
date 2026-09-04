@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import RazorpayLogo from "../common/RazorpayLogo";
 
 export const ProviderTruthWidget: React.FC = () => {
   const [selectedUniverse, setSelectedUniverse] = useState<"DEMO" | "PROVIDER">("DEMO");
@@ -38,9 +39,12 @@ export const ProviderTruthWidget: React.FC = () => {
               cursor: "pointer",
               fontFamily: "monospace",
               transition: "all 0.2s ease",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
             }}
           >
-            ● RAZORPAY MODE (PROVIDER TRUTH)
+            ● <RazorpayLogo height={14} variant="white" /> MODE (PROVIDER TRUTH)
           </button>
         </div>
       </div>
@@ -101,8 +105,8 @@ export const ProviderTruthWidget: React.FC = () => {
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: "12px", fontWeight: 800, color: "#00FF66", fontFamily: "monospace" }}>
-              RAZORPAY TEST MODE
+            <span style={{ fontSize: "12px", fontWeight: 800, color: "#00FF66", fontFamily: "monospace", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+              <RazorpayLogo height={14} variant="white" /> TEST MODE
             </span>
             <span style={{ fontSize: "9px", padding: "2px 6px", borderRadius: "4px", background: "rgba(0, 255, 102, 0.15)", color: "#00FF66", fontWeight: 800 }}>
               100% REAL PROVIDER TRUTH
@@ -128,8 +132,9 @@ export const ProviderTruthWidget: React.FC = () => {
 
       {/* Positioning Statement Banner */}
       <div style={{ textAlign: "center", padding: "24px", background: "#0A0C10", border: "1px solid #1E2230", borderRadius: "14px" }}>
-        <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#8E9BB0" }}>
-          Razorpay moves the money.
+        <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#8E9BB0", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+          <RazorpayLogo height="1.1em" variant="white" glow />
+          <span>moves the money.</span>
         </div>
         <div style={{ fontSize: "1.6rem", fontWeight: 900, color: "#FFF", marginTop: "2px" }}>
           ReviveOS decides <span style={{ color: "#00F0FF" }}>whether it should move.</span>

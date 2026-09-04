@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Activity, Zap, RefreshCw
 } from "lucide-react";
+import RazorpayLogo from "./common/RazorpayLogo";
 
 export default function GatewayTopologyGraph() {
   const [stripeDegraded, setStripeDegraded] = useState(true);
@@ -105,7 +106,9 @@ export default function GatewayTopologyGraph() {
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10B981" }} />
-                  <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>Razorpay Primary</span>
+                  <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                    <RazorpayLogo height={13} variant="white" /> Primary
+                  </span>
                 </div>
                 <div style={{ fontSize: "0.625rem", color: "var(--text-tertiary)", marginTop: "2px" }}>210ms · 3.2% err · 99.8% up</div>
               </div>

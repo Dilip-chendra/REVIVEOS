@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { X, RefreshCw, Code2, Copy, Check, Database } from "lucide-react";
 import { getRazorpayRawRecords } from "../api/client";
+import RazorpayLogo from "./common/RazorpayLogo";
 
 interface Props {
   isOpen: boolean;
@@ -96,7 +97,7 @@ export default function RawProviderInspectorModal({ isOpen, onClose }: Props) {
                 Raw Provider Data Inspector
               </h2>
               <p style={{ fontSize: "0.75rem", color: "#94A3B8" }}>
-                Safely redacted telemetry directly from the active Razorpay client • Zero credentials exposed
+                Safely redacted telemetry directly from the active <RazorpayLogo height={12} variant="white" style={{ margin: "0 3px" }} /> client • Zero credentials exposed
               </p>
             </div>
           </div>

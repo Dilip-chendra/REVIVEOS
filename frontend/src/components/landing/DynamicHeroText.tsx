@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import RazorpayLogo from "../common/RazorpayLogo";
 
 export interface DynamicHeroTextProps {
   staticPrefix?: string;
@@ -244,13 +245,23 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
         <div
           style={{
             color: "#FFFFFF",
-            display: "block",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: isLeftAligned ? "flex-start" : "center",
+            flexWrap: "nowrap",
             whiteSpace: "nowrap",
             marginBottom: "0.18em",
             textShadow: "0 2px 24px rgba(255, 255, 255, 0.12)",
           }}
         >
-          {staticPrefix}
+          {staticPrefix === "Razorpay Moves the Money." ? (
+            <>
+              <RazorpayLogo height="0.95em" glow variant="white" style={{ marginRight: "0.28em", verticalAlign: "middle" }} />
+              <span>Moves the Money.</span>
+            </>
+          ) : (
+            staticPrefix
+          )}
         </div>
 
         {/* Line 2: Decision OS + Natural Seamless Dynamic Word */}

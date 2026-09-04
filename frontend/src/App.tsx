@@ -11,6 +11,7 @@ import PitchDeckModal from "./components/PitchDeckModal";
 import ExecutiveComplianceModal from "./components/ExecutiveComplianceModal";
 import JudgeDefenseModal from "./components/JudgeDefenseModal";
 import RazorpayConnectionModal from "./components/RazorpayConnectionModal";
+import RazorpayLogo from "./components/common/RazorpayLogo";
 import RawProviderInspectorModal from "./components/RawProviderInspectorModal";
 import RealWorkspaceGateway from "./components/RealWorkspaceGateway";
 import { SidebarAccordion } from "./components/SidebarAccordion";
@@ -362,22 +363,23 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
                 />
               </span>
 
-              {/* Razorpay Brand Icon */}
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M14.5 2L5 13H12L9.5 22L19 11H12L14.5 2Z" fill={isConnected ? "#10B981" : "#F59E0B"} />
-              </svg>
+              {/* Razorpay Brand Glyph */}
+              <RazorpayLogo type="glyph" height={13} variant="white" />
 
               <span style={{
                 fontWeight: 700,
                 fontSize: "0.74rem",
                 color: isConnected ? "#34D399" : "#FCD34D",
                 letterSpacing: "0.01em",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
               }}>
-                {isConnected
+                <RazorpayLogo height={11} variant="white" />: {isConnected
                   ? (wsRazorpayStatus?.environment?.toLowerCase() === "live" || razorpayStatus?.credentials?.environment === "live"
-                      ? "RAZORPAY: CONNECTED · LIVE"
-                      : "RAZORPAY: CONNECTED · TEST")
-                  : "RAZORPAY: NOT CONNECTED"}
+                      ? "CONNECTED · LIVE"
+                      : "CONNECTED · TEST")
+                  : "NOT CONNECTED"}
               </span>
             </button>
 
@@ -556,7 +558,7 @@ function AppLayout({ onExitDemo }: { onExitDemo?: () => void }) {
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#10B981", boxShadow: "0 0 6px #10B981" }} />
-              <span><strong>REAL WORKSPACE ({workspace?.name || "Acme Technologies"})</strong>: Authenticated against live Razorpay Test rails ({wsRazorpayStatus?.key_id_masked || razorpayStatus?.credentials?.key_id_masked || "rzp_test_..."}). Demo data is completely disabled. {dataCounts ? `• ${dataCounts.payments} Payments • ${dataCounts.subscriptions} Subscriptions • ${dataCounts.recovery_cases} Active Cases` : ""}</span>
+              <span><strong>REAL WORKSPACE ({workspace?.name || "Acme Technologies"})</strong>: Authenticated against live <RazorpayLogo height="0.95em" variant="white" style={{ margin: "0 4px" }} /> Test rails ({wsRazorpayStatus?.key_id_masked || razorpayStatus?.credentials?.key_id_masked || "rzp_test_..."}). Demo data is completely disabled. {dataCounts ? `• ${dataCounts.payments} Payments • ${dataCounts.subscriptions} Subscriptions • ${dataCounts.recovery_cases} Active Cases` : ""}</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <span style={{ fontSize: "11px", color: "#A7F3D0", background: "rgba(16, 185, 129, 0.15)", padding: "2px 8px", borderRadius: "4px", fontWeight: 700 }}>

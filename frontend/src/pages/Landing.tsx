@@ -14,6 +14,7 @@ import { ProviderTruthWidget } from "../components/landing/ProviderTruthWidget";
 import { ModuleMatrix } from "../components/landing/ModuleMatrix";
 import { ConversionTerminal } from "../components/landing/ConversionTerminal";
 import { DynamicHeroText } from "../components/landing/DynamicHeroText";
+import RazorpayLogo from "../components/common/RazorpayLogo";
 import Footer from "../components/landing/Footer";
 // ── New Championship Sections ─────────────────────────────────────────────────
 import { FiveQuestionsSection } from "../components/landing/FiveQuestionsSection";
@@ -483,11 +484,13 @@ export default function Landing({ onEnterDemo }: LandingProps) {
             <div style={{ fontSize: "0.8125rem", color: "#00F0FF", fontWeight: 800, letterSpacing: "0.15em", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
               DATA PROVENANCE & ISOLATION
             </div>
-            <h2 style={{ fontFamily: "var(--font-section-heading)", fontSize: "clamp(2rem, 3.2vw, 2.7rem)", fontWeight: 800, color: "#FFF", letterSpacing: "-0.02em", textTransform: "uppercase", margin: 0 }}>
-              Demo Universe vs Razorpay Provider Truth
+            <h2 style={{ fontFamily: "var(--font-section-heading)", fontSize: "clamp(2rem, 3.2vw, 2.7rem)", fontWeight: 800, color: "#FFF", letterSpacing: "-0.02em", textTransform: "uppercase", margin: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", flexWrap: "wrap" }}>
+              <span>Demo Universe vs</span>
+              <RazorpayLogo height="0.82em" variant="white" glow />
+              <span>Provider Truth</span>
             </h2>
             <p style={{ fontSize: "1rem", color: "#8E9BB0", maxWidth: "640px", margin: "0 auto", lineHeight: 1.6 }}>
-              Zero synthetic contamination. Real mode displays only genuine Razorpay transaction telemetry with honest zero-data states.
+              Zero synthetic contamination. Real mode displays only genuine <RazorpayLogo height="0.95em" variant="white" style={{ margin: "0 4px" }} /> transaction telemetry with honest zero-data states.
             </p>
           </div>
           <ProviderTruthWidget />

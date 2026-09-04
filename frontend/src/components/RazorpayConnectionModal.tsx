@@ -10,6 +10,7 @@ import {
   getRazorpayStatus, disconnectRazorpay, switchEnvironment,
   runRazorpayIntegrationTest
 } from "../api/client";
+import RazorpayLogo from "./common/RazorpayLogo";
 
 interface Props {
   isOpen: boolean;
@@ -328,8 +329,10 @@ export default function RazorpayConnectionModal({ isOpen, onClose, onSuccess }: 
               <ShieldCheck size={22} color="#34D399" />
             </div>
             <div>
-              <h2 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#FFF", letterSpacing: "-0.02em", display: "flex", alignItems: "center", gap: 8 }}>
-                CONNECT RAZORPAY GATEWAY
+              <h2 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#FFF", letterSpacing: "-0.02em", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span>CONNECT</span>
+                <RazorpayLogo height={20} variant="white" glow />
+                <span>GATEWAY</span>
                 <span style={{ fontSize: "0.65rem", fontWeight: 700, padding: "2px 7px", borderRadius: "9999px", background: "rgba(16, 185, 129, 0.15)", border: "1px solid rgba(16, 185, 129, 0.3)", color: "#6EE7B7" }}>
                   BANK-GRADE VAULT
                 </span>

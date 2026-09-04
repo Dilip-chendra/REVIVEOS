@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X, ChevronLeft, ChevronRight, ArrowRight
 } from "lucide-react";
+import RazorpayLogo from "./common/RazorpayLogo";
 
 interface PitchDeckModalProps {
   isOpen: boolean;
@@ -109,11 +110,11 @@ export default function PitchDeckModal({ isOpen, onClose }: PitchDeckModalProps)
         <div className="grid-responsive-2" style={{ alignItems: "center" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#FFF" }}>
-              We do NOT replace Razorpay.<br />
+              We do NOT replace <RazorpayLogo height="0.88em" variant="white" style={{ verticalAlign: "baseline" }} />.<br />
               We make <span style={{ color: "#10B981" }}>every payment rail 3x more effective</span>.
             </div>
             <p style={{ fontSize: "0.8125rem", color: "#94A3B8", lineHeight: 1.55 }}>
-              Razorpay built world-class payment execution rails: Payment Links, Subscriptions, UPI Intent, and Webhooks. 
+              <RazorpayLogo height="0.95em" variant="white" style={{ margin: "0 4px" }} /> built world-class payment execution rails: Payment Links, Subscriptions, UPI Intent, and Webhooks. 
               <strong>ReviveOS operates as the Autonomous Economic Control Plane</strong> that decides exactly when and how those rails should be triggered.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "0.75rem" }}>
@@ -389,7 +390,11 @@ export default function PitchDeckModal({ isOpen, onClose }: PitchDeckModalProps)
       content: (
         <div style={{ display: "flex", flexDirection: "column", gap: "16px", textAlign: "center", maxWidth: "760px", margin: "0 auto" }}>
           <div style={{ fontSize: "1.65rem", fontWeight: 900, color: "#FFF", lineHeight: 1.25 }}>
-            "Razorpay moves the money rails.<br />
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+              <RazorpayLogo height="0.88em" variant="white" glow />
+              <span>moves the money rails.</span>
+            </span>
+            <br />
             <span style={{ background: "linear-gradient(135deg, #38BDF8 0%, #818CF8 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
               ReviveOS decides how every lost rupee comes back."
             </span>
