@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import RazorpayLogo from "../common/RazorpayLogo";
+import { LogoIcon } from "../Logo";
 
 export interface DynamicHeroTextProps {
   staticPrefix?: string;
@@ -293,20 +294,31 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
                 fontWeight: 800,
                 letterSpacing: "-0.02em",
                 display: "inline-flex",
-                alignItems: "baseline",
+                alignItems: "center",
+                gap: "0.2em",
               }}
             >
-              <span style={{ color: "#F1F5F9" }}>Revive</span>
-              <span
+              <LogoIcon
+                size="0.92em"
                 style={{
-                  background: "linear-gradient(135deg, #6366F1 0%, #38BDF8 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  marginLeft: "1px",
-                  filter: "drop-shadow(0 0 12px rgba(56, 189, 248, 0.4))",
+                  display: "inline-block",
+                  verticalAlign: "middle",
+                  filter: "drop-shadow(0 0 14px rgba(56, 189, 248, 0.45))",
                 }}
-              >
-                OS
+              />
+              <span style={{ display: "inline-flex", alignItems: "baseline" }}>
+                <span style={{ color: "#F1F5F9" }}>Revive</span>
+                <span
+                  style={{
+                    background: "linear-gradient(135deg, #6366F1 0%, #38BDF8 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    marginLeft: "1px",
+                    filter: "drop-shadow(0 0 12px rgba(56, 189, 248, 0.4))",
+                  }}
+                >
+                  OS
+                </span>
               </span>
             </span>
             <span>decides when to</span>

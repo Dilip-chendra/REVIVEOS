@@ -15,6 +15,7 @@ import { ModuleMatrix } from "../components/landing/ModuleMatrix";
 import { ConversionTerminal } from "../components/landing/ConversionTerminal";
 import { DynamicHeroText } from "../components/landing/DynamicHeroText";
 import RazorpayLogo from "../components/common/RazorpayLogo";
+import { LogoIcon } from "../components/Logo";
 import Footer from "../components/landing/Footer";
 // ── New Championship Sections ─────────────────────────────────────────────────
 import { FiveQuestionsSection } from "../components/landing/FiveQuestionsSection";
@@ -245,16 +246,19 @@ export default function Landing({ onEnterDemo }: LandingProps) {
             }}
           >
             When payments fail, uncoordinated bots spam customers and give away needless discounts.{" "}
-            <span style={{ color: "#F8FAFC", fontWeight: 600 }}>
-              <span style={{ color: "#FFFFFF" }}>Revive</span>
-              <span
-                style={{
-                  background: "linear-gradient(135deg, #6366F1 0%, #38BDF8 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                }}
-              >
-                OS
+            <span style={{ color: "#F8FAFC", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "6px" }}>
+              <LogoIcon size={18} style={{ verticalAlign: "middle" }} />
+              <span>
+                <span style={{ color: "#FFFFFF" }}>Revive</span>
+                <span
+                  style={{
+                    background: "linear-gradient(135deg, #6366F1 0%, #38BDF8 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}
+                >
+                  OS
+                </span>
               </span>
               {" "}is the smart decision brain
             </span>
