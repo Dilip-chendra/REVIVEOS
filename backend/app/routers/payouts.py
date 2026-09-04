@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
-from app.auth import get_current_user
+from app.auth import get_current_user, get_effective_mode
 from app.models.user import User
 from app.state import get_state
 from app.services.payout_gateway import payout_gateway
@@ -27,9 +27,9 @@ class RejectPayoutRequest(BaseModel):
 
 
 @router.get("")
-async def list_payouts(current_user: User = Depends(get_current_user)):
-    state = get_state(current_user.merchant_id)
-    is_real = state.get("active_environment") in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL")
+async def list_payouts(request: Request, current_user: User = Depends(get_current_user)):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
     return payout_gateway.list_payouts(
         merchant_id=current_user.merchant_id,
         is_real_mode=is_real,
@@ -39,10 +39,11 @@ async def list_payouts(current_user: User = Depends(get_current_user)):
 @router.post("/request")
 async def request_payout(
     req: RequestPayoutRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
 ):
-    state = get_state(current_user.merchant_id)
-    is_demo = state.get("active_environment") == "DEMO"
+    mode = get_effective_mode(request, current_user)
+    is_demo = mode == "demo"
     return payout_gateway.request_payout(
         merchant_id=current_user.merchant_id,
         case_id=req.case_id,

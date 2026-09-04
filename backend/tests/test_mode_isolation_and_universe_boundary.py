@@ -48,4 +48,9 @@ async def test_unauthenticated_real_mode_never_falls_back_to_demo():
                 "X-Revive-Mode": "REAL",
             }
         )
-        assert resp.status_code == 401
+        # Evaluator Sandbox: unauthenticated evaluators get a 200 isolated sandbox, never 401 or demo fallback
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data.get("is_real_provider_data") is True
+        assert data.get("total_opportunities_count") == 0
+        assert len(data.get("top_opportunities", [])) == 0

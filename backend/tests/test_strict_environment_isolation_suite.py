@@ -110,10 +110,16 @@ async def test_mode_switch_clears_previous_universe():
 @pytest.mark.asyncio
 async def test_real_provider_cases_populate_real_mode():
     """When real provider records are synced into provider_test_cases, they appear in Real Mode."""
+    from app.database import AsyncSessionLocal
+    from app.auth import _get_or_create_sandbox_evaluator_user
+    async with AsyncSessionLocal() as session:
+        user = await _get_or_create_sandbox_evaluator_user(session)
+        mid = user.merchant_id
+
     real_case = {
         "id": "case_real_999",
         "payment_id": "pay_live_test_123",
-        "merchant_id": "default",
+        "merchant_id": mid,
         "amount_inr": 7500.0,
         "customer_id": "cust_real_001",
         "customer_name": "Authentic Test Merchant Customer",
@@ -124,8 +130,8 @@ async def test_real_provider_cases_populate_real_mode():
         "is_real_provider_data": True,
         "created_at": "2026-08-31T06:00:00Z",
     }
-    set_provider_cases("default", "test", [real_case])
-    set_active_environment("default", "RAZORPAY_TEST")
+    set_provider_cases(mid, "test", [real_case])
+    set_active_environment(mid, "RAZORPAY_TEST")
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

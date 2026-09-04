@@ -362,14 +362,18 @@ export default function Dashboard() {
   const handleSimulateArbitration = async () => {
     try {
       setArbitrating(true);
+      const allocs = portfolio?.allocations || portfolio?.opportunities || [];
+      const targetCustomer = isRealMode && allocs.length > 0
+        ? { customer_id: allocs[0].customer_id || "CUST-REAL-001", customer_name: allocs[0].customer_name || "Valued Customer" }
+        : { customer_id: isRealMode ? "CUST-REAL-001" : "CUST-9821", customer_name: isRealMode ? "Valued Customer" : "Aarav Mehta" };
       let res: any;
       try {
-        res = await arbitrateAgents({ customer_id: "CUST-9821", customer_name: "Aarav Mehta" });
+        res = await arbitrateAgents(targetCustomer);
       } catch (err) {
         console.warn("Agent arbitration fallback:", err);
         res = {
-          customer_id: "CUST-9821",
-          customer_name: "Aarav Mehta",
+          customer_id: targetCustomer.customer_id,
+          customer_name: targetCustomer.customer_name,
           arbitration_winner: "MANDATE_RETRY_ENGINE",
           winning_rationale: "Highest Net Incremental Contribution (₹2,150) with 0 customer friction score. Suppressed 10% discount concession to protect merchant gross margin.",
           proposals: [
@@ -2149,7 +2153,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      <LiveRazorpayLinkModal isOpen={showLiveLinkModal} onClose={() => setShowLiveLinkModal(false)} defaultAmount={499} />
+      <LiveRazorpayLinkModal
+        isOpen={showLiveLinkModal}
+        onClose={() => setShowLiveLinkModal(false)}
+        defaultAmount={499}
+        customerName={isRealMode ? "Valued Customer" : "Aarav Mehta"}
+        customerEmail={isRealMode ? "customer@example.com" : "aarav.mehta@example.com"}
+      />
       <RazorpayConnectionModal
         isOpen={showConnectModal}
         onClose={() => setShowConnectModal(false)}

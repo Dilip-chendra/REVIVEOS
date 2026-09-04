@@ -56,6 +56,18 @@ else:
 
 # ── Public dependency ─────────────────────────────────────────────────────────
 
+def get_effective_mode(request: Request, current_user: Optional[User] = None) -> str:
+    """
+    Returns 'real' or 'demo' based on headers and user state.
+    Strictly canonical: 'real' if X-Revive-Mode is REAL or environment is RAZORPAY_TEST/RAZORPAY_LIVE/REAL.
+    """
+    x_mode = (request.headers.get("X-Revive-Mode") or "").strip().upper()
+    env_header = (request.headers.get("X-Revive-Environment") or "").strip().upper()
+    if x_mode == "REAL" or env_header in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL"):
+        return "real"
+    return "demo"
+
+
 async def get_current_user(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Security(security),
@@ -64,114 +76,79 @@ async def get_current_user(
     """
     FastAPI dependency used by all protected routers.
 
-    1.  Verifies the Clerk JWT from the Authorization: Bearer header.
-    2.  Resolves (or auto-creates) a ReviveAI User row.
-    3.  Ensures the User has their OWN Merchant (never shared).
-    4.  Returns the User so route handlers can read user.merchant_id safely.
-
-    Dev bypass: if CLERK_SECRET_KEY is not configured, returns a synthetic
-    dev user (one per DB session) — safe only for local development.
+    1. Checks Authorization header for Clerk JWT or evaluation token.
+    2. Resolves private User and Merchant.
+    3. Provides isolated sandbox evaluator workspace if testing Real Mode unauthenticated.
+    4. Never leaks or mutates 'default' state across tenants.
     """
     token: Optional[str] = credentials.credentials if credentials else None
     if not token:
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
-            token = auth_header[7:]
+            token = auth_header[7:].strip()
 
     x_mode = (request.headers.get("X-Revive-Mode") or "").strip().upper()
     env_header = (request.headers.get("X-Revive-Environment") or "").strip().upper()
+    is_real_request = (x_mode == "REAL" or env_header in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL"))
 
-    if x_mode == "REAL" and not token:
+    from app.state import set_active_environment
+
+    # If running with dev bypass, or unauthenticated/demo evaluator token
+    if _IS_DEV_BYPASS or not token or token == "demo_evaluation_token":
+        if is_real_request:
+            user = await _get_or_create_sandbox_evaluator_user(db)
+            target_env = env_header if env_header in ("RAZORPAY_TEST", "RAZORPAY_LIVE") else "RAZORPAY_TEST"
+            set_active_environment(user.merchant_id, target_env)
+            return user
+        else:
+            user = await _get_or_create_dev_user(db)
+            set_active_environment(user.merchant_id, "DEMO")
+            return user
+
+    # Real Clerk JWT provided — verify with Clerk SDK
+    try:
+        loop = asyncio.get_event_loop()
+        payload = await loop.run_in_executor(
+            None, partial(_verify_clerk_token, request)
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning(f"Clerk JWT verification failed: {exc}")
+        # If token failed but request was for sandbox evaluation, fallback safely to sandbox evaluator
+        if is_real_request:
+            user = await _get_or_create_sandbox_evaluator_user(db)
+            target_env = env_header if env_header in ("RAZORPAY_TEST", "RAZORPAY_LIVE") else "RAZORPAY_TEST"
+            set_active_environment(user.merchant_id, target_env)
+            return user
         raise HTTPException(
             status_code=401,
             detail="Your session has expired. Please sign in again.",
         )
 
-    if _IS_DEV_BYPASS:
-        user = await _get_or_create_dev_user(db)
-        from app.state import set_active_environment
-        if env_header in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "DEMO"):
-            set_active_environment(user.merchant_id, env_header)
-            if user.merchant_id != "default":
-                set_active_environment("default", env_header)
-        elif x_mode == "REAL":
-            set_active_environment(user.merchant_id, "RAZORPAY_TEST")
-            if user.merchant_id != "default":
-                set_active_environment("default", "RAZORPAY_TEST")
-        elif x_mode == "DEMO":
-            set_active_environment(user.merchant_id, "DEMO")
-            if user.merchant_id != "default":
-                set_active_environment("default", "DEMO")
-        return user
-    else:
+    clerk_user_id: str = payload["sub"]
 
-        # ── Explicit Demo Mode for Synthetic Evaluation (NovaCart) ────────────
-        x_mode = (request.headers.get("X-Revive-Mode") or "").strip().upper()
-        if x_mode == "REAL":
-            is_demo_mode = False
-        else:
-            is_demo_mode = (
-                token == "demo_evaluation_token" or
-                x_mode == "DEMO" or
-                (request.headers.get("X-Revive-Environment") == "DEMO" and (not token or token == "demo_evaluation_token"))
-            )
+    # Resolve ReviveAI User
+    result = await db.execute(
+        select(User).where(User.clerk_user_id == clerk_user_id)
+    )
+    user: Optional[User] = result.scalars().first()
 
-        if is_demo_mode:
-            user = await _get_or_create_dev_user(db)
-            from app.state import set_active_environment
-            set_active_environment(user.merchant_id, "DEMO")
-            if user.merchant_id != "default":
-                set_active_environment("default", "DEMO")
-            return user
+    if not user:
+        user = await _create_user_with_merchant(clerk_user_id, payload, db)
 
-        if not token:
-            raise HTTPException(
-                status_code=401,
-                detail="Your session has expired. Please sign in again.",
-            )
+    if not user.merchant_id:
+        merchant = await _create_fresh_merchant(db)
+        user.merchant_id = merchant.id
+        await db.commit()
+        await db.refresh(user)
 
-        # ── Verify with Clerk (run sync SDK in thread pool) ───────────────────
-        try:
-            loop = asyncio.get_event_loop()
-            payload = await loop.run_in_executor(
-                None, partial(_verify_clerk_token, request)
-            )
-        except HTTPException:
-            raise
-        except Exception as exc:
-            logger.warning(f"Clerk JWT verification failed: {exc}")
-            raise HTTPException(
-                status_code=401,
-                detail="Your session has expired. Please sign in again.",
-            )
-
-        clerk_user_id: str = payload["sub"]
-
-        # ── Resolve ReviveAI User ─────────────────────────────────────────────
-        result = await db.execute(
-            select(User).where(User.clerk_user_id == clerk_user_id)
-        )
-        user: Optional[User] = result.scalars().first()
-
-        if not user:
-            user = await _create_user_with_merchant(clerk_user_id, payload, db)
-
-        # Defensive: if somehow a user exists without a merchant (corrupted data)
-        if not user.merchant_id:
-            merchant = await _create_fresh_merchant(db)
-            user.merchant_id = merchant.id
-            await db.commit()
-            await db.refresh(user)
-
-    # ── Universal Environment Synchronization ─────────────────────────────────
-    env_header = request.headers.get("X-Revive-Environment")
-    if env_header:
-        env_clean = env_header.strip().upper()
-        if env_clean in ("DEMO", "RAZORPAY_TEST", "RAZORPAY_LIVE"):
-            from app.state import set_active_environment
-            set_active_environment(user.merchant_id, env_clean)
-            if user.merchant_id != "default":
-                set_active_environment("default", env_clean)
+    # Synchronize environment strictly for this user's merchant ONLY
+    if is_real_request:
+        target_env = env_header if env_header in ("RAZORPAY_TEST", "RAZORPAY_LIVE") else "RAZORPAY_TEST"
+        set_active_environment(user.merchant_id, target_env)
+    elif env_header == "DEMO" or x_mode == "DEMO":
+        set_active_environment(user.merchant_id, "DEMO")
 
     return user
 
@@ -275,4 +252,33 @@ async def _get_or_create_dev_user(db: AsyncSession) -> User:
     await db.commit()
     await db.refresh(user)
     logger.info(f"Dev bypass user created — merchant_id={merchant.id}")
+    return user
+
+
+async def _get_or_create_sandbox_evaluator_user(db: AsyncSession) -> User:
+    """
+    Returns the isolated sandbox evaluator user for evaluators exploring Real Mode
+    without signing into Clerk.
+    """
+    result = await db.execute(
+        select(User).where(User.clerk_user_id == "sandbox_evaluator_user")
+    )
+    user: Optional[User] = result.scalars().first()
+    if user:
+        return user
+
+    merchant = await _create_fresh_merchant(db)
+    merchant.onboarding_complete = True
+    merchant.name = "Evaluator Live Sandbox"
+
+    user = User(
+        clerk_user_id="sandbox_evaluator_user",
+        email="evaluator@reviveai.sandbox",
+        name="Evaluator Sandbox",
+        merchant_id=merchant.id,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    logger.info(f"Sandbox evaluator user created — merchant_id={merchant.id}")
     return user

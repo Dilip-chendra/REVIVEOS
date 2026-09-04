@@ -28,13 +28,51 @@ settings = get_settings()
 class CredentialStore:
     """
     Manages encrypted provider credentials per merchant.
-    Uses in-memory encrypted cache backed by configuration defaults.
+    Uses in-memory encrypted cache backed by persistent SQLite storage.
     """
 
     def __init__(self):
         self._store: dict[str, dict[str, Any]] = {}
         self._cipher = None
         self._init_cipher()
+        self._init_db()
+
+    def _get_db_path(self) -> str:
+        db_url = settings.database_url
+        if "sqlite" in db_url:
+            path = db_url.split("///")[-1]
+            if not os.path.isabs(path):
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                backend_db = os.path.join(base_dir, "reviveai.db")
+                if os.path.exists(backend_db) or not os.path.exists(path):
+                    return backend_db
+                return os.path.abspath(path)
+            return path
+        return "reviveai.db"
+
+    def _init_db(self):
+        try:
+            import sqlite3
+            db_path = self._get_db_path()
+            with sqlite3.connect(db_path) as conn:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS merchant_credentials (
+                        merchant_id TEXT NOT NULL,
+                        provider TEXT NOT NULL,
+                        connection_id TEXT NOT NULL,
+                        environment TEXT NOT NULL,
+                        key_id TEXT NOT NULL,
+                        encrypted_key_secret TEXT NOT NULL,
+                        encrypted_webhook_secret TEXT NOT NULL,
+                        is_configured INTEGER NOT NULL,
+                        has_webhook_secret INTEGER NOT NULL,
+                        updated_at TEXT NOT NULL,
+                        PRIMARY KEY (merchant_id, provider)
+                    )
+                """)
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Failed to initialize SQLite credential table: {e}")
 
     def _init_cipher(self):
         """Initialize encryption cipher."""
@@ -143,6 +181,33 @@ class CredentialStore:
         key = f"{merchant_id}:{provider}"
         self._store[key] = record
 
+        # Persist to SQLite
+        try:
+            import sqlite3
+            db_path = self._get_db_path()
+            with sqlite3.connect(db_path) as conn:
+                conn.execute("""
+                    INSERT OR REPLACE INTO merchant_credentials
+                    (merchant_id, provider, connection_id, environment, key_id,
+                     encrypted_key_secret, encrypted_webhook_secret, is_configured,
+                     has_webhook_secret, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    merchant_id,
+                    provider,
+                    record["connection_id"],
+                    record["environment"],
+                    record["key_id"],
+                    record["encrypted_key_secret"],
+                    record["encrypted_webhook_secret"],
+                    1 if record["is_configured"] else 0,
+                    1 if record["has_webhook_secret"] else 0,
+                    record["updated_at"],
+                ))
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Failed to persist credentials to SQLite for {merchant_id}: {e}")
+
         logger.info(f"Encrypted credentials stored for merchant={merchant_id}, provider={provider}, conn={connection_id}, env={final_env}")
         return self.get_masked_credentials(merchant_id, provider)
 
@@ -151,6 +216,36 @@ class CredentialStore:
         key = f"{merchant_id}:{provider}"
         record = self._store.get(key)
         
+        if not record:
+            # Load from persistent SQLite
+            try:
+                import sqlite3
+                db_path = self._get_db_path()
+                with sqlite3.connect(db_path) as conn:
+                    conn.row_factory = sqlite3.Row
+                    cur = conn.cursor()
+                    cur.execute(
+                        "SELECT * FROM merchant_credentials WHERE merchant_id = ? AND provider = ?",
+                        (merchant_id, provider)
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        record = {
+                            "connection_id": row["connection_id"],
+                            "merchant_id": row["merchant_id"],
+                            "provider": row["provider"],
+                            "environment": row["environment"],
+                            "key_id": row["key_id"],
+                            "encrypted_key_secret": row["encrypted_key_secret"],
+                            "encrypted_webhook_secret": row["encrypted_webhook_secret"],
+                            "is_configured": bool(row["is_configured"]),
+                            "has_webhook_secret": bool(row["has_webhook_secret"]),
+                            "updated_at": row["updated_at"],
+                        }
+                        self._store[key] = record
+            except Exception as e:
+                logger.warning(f"Failed to load credentials from SQLite for {merchant_id}: {e}")
+
         if not record:
             # Only explicit system sandbox uses platform environment fallback
             if merchant_id == "system_sandbox" and provider == "razorpay" and settings.razorpay_configured:
@@ -207,17 +302,18 @@ class CredentialStore:
     def clear_credentials(self, merchant_id: str, provider: str = "razorpay") -> bool:
         """Remove credentials for a merchant."""
         key = f"{merchant_id}:{provider}"
-        self._store[key] = {
-            "connection_id": "",
-            "merchant_id": merchant_id,
-            "provider": provider,
-            "environment": "test",
-            "key_id": "",
-            "encrypted_key_secret": "",
-            "encrypted_webhook_secret": "",
-            "is_configured": False,
-            "has_webhook_secret": False,
-        }
+        self._store.pop(key, None)
+        try:
+            import sqlite3
+            db_path = self._get_db_path()
+            with sqlite3.connect(db_path) as conn:
+                conn.execute(
+                    "DELETE FROM merchant_credentials WHERE merchant_id = ? AND provider = ?",
+                    (merchant_id, provider)
+                )
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Failed to delete credentials from SQLite for {merchant_id}: {e}")
         logger.info(f"Cleared credentials for merchant={merchant_id}, provider={provider}")
         return True
 

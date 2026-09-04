@@ -202,6 +202,7 @@ class RecoveryCapitalAllocator:
         risk_budget_inr: Optional[float] = None,
         risk_tolerance: str = "BALANCED",
         merchant_id: str = "default",
+        is_real_mode: Optional[bool] = None,
     ) -> PortfolioAllocationResult:
         return self.allocate(
             recovery_budget_inr=recovery_budget_inr,
@@ -209,6 +210,7 @@ class RecoveryCapitalAllocator:
             reserve_budget_pct=reserve_budget_pct,
             risk_tolerance=risk_tolerance,
             merchant_id=merchant_id,
+            is_real_mode=is_real_mode,
         )
 
     def allocate(
@@ -218,11 +220,15 @@ class RecoveryCapitalAllocator:
         reserve_budget_pct: float = 0.20,
         risk_tolerance: str = "BALANCED",
         merchant_id: str = "default",
+        is_real_mode: Optional[bool] = None,
     ) -> PortfolioAllocationResult:
         from app.state import get_state
         state = get_state(merchant_id)
         env = state.get("active_environment", "DEMO")
-        env_is_real = env in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL")
+        if is_real_mode is None:
+            env_is_real = env in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL")
+        else:
+            env_is_real = is_real_mode
 
         if env_is_real:
             target_key = "provider_test_cases" if env in ("RAZORPAY_TEST", "REAL") else "provider_live_cases"

@@ -3,9 +3,9 @@ ReviveOS — Opportunity Queue & Strategy Simulation API Router
 =============================================================
 Primary operational surface for revenue recovery intelligence.
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from typing import Any, Dict, List, Optional
-from app.auth import get_current_user
+from app.auth import get_current_user, get_effective_mode
 from app.models.user import User
 from app.state import get_state
 from app.services.recovery_attribution import recovery_attribution_engine
@@ -16,15 +16,18 @@ router = APIRouter(prefix="/opportunities", tags=["Opportunity Queue"])
 
 @router.get("/queue")
 async def get_opportunity_queue(
+    request: Request,
     current_user: User = Depends(get_current_user),
     urgency: Optional[str] = None,
     decision: Optional[str] = None,
 ):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
     mid = current_user.merchant_id
     state = get_state(mid)
     env = state.get("active_environment", "DEMO")
-    if env in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL"):
-        target_key = "provider_test_cases" if env in ("RAZORPAY_TEST", "REAL") else "provider_live_cases"
+    if is_real or env in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL"):
+        target_key = "provider_live_cases" if env == "RAZORPAY_LIVE" else "provider_test_cases"
         cases = state.get(target_key, [])
     else:
         cases = state.get("demo_cases", state.get("cases", []))
@@ -38,7 +41,8 @@ async def get_opportunity_queue(
             continue
         
         item = score.to_dict()
-        item["customer_name"] = c.get("customer_name", "Aarav Mehta")
+        default_name = "Valued Customer" if is_real else "Aarav Mehta"
+        item["customer_name"] = c.get("customer_name") or default_name
         item["failure_code"] = c.get("failure_code", "UNKNOWN")
         item["case_type"] = c.get("case_type", "payment_failure")
         item["status"] = c.get("status", "open")
@@ -63,15 +67,26 @@ async def get_opportunity_queue(
 @router.get("/{opp_id}/simulate-strategies")
 async def simulate_case_strategies(
     opp_id: str,
+    request: Request,
     current_user: User = Depends(get_current_user),
 ):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
     mid = current_user.merchant_id
     state = get_state(mid)
-    cases = state.get("cases", [])
-    case = next((c for c in cases if c.get("id") == opp_id), None)
+    env = state.get("active_environment", "DEMO")
+    if is_real or env in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL"):
+        target_key = "provider_live_cases" if env == "RAZORPAY_LIVE" else "provider_test_cases"
+        cases = state.get(target_key, [])
+    else:
+        cases = state.get("demo_cases", state.get("cases", []))
+
+    case = next((c for c in cases if c.get("id") == opp_id or c.get("case_id") == opp_id), None)
 
     if not case:
-        # Generate on-demand mock case
+        if is_real:
+            raise HTTPException(status_code=404, detail=f"Opportunity '{opp_id}' not found in real provider cases.")
+        # Generate on-demand mock case only in DEMO mode
         case = {
             "id": opp_id,
             "merchant_id": mid,

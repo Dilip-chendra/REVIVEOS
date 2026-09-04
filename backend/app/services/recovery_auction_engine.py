@@ -144,16 +144,58 @@ class RecoveryAuctionEngine:
         for p in self._proposals_pool:
             p.compute_auction_metrics()
 
-    def get_all_proposals(self) -> List[Dict[str, Any]]:
-        for p in self._proposals_pool:
+    def get_proposals_for_workspace(self, merchant_id: str = "default", is_real_mode: bool = False) -> List[ActionProposal]:
+        if is_real_mode:
+            from app.state import get_state
+            st = get_state(merchant_id)
+            env = st.get("active_environment", "RAZORPAY_TEST")
+            target_key = "provider_test_cases" if env in ("RAZORPAY_TEST", "REAL") else "provider_live_cases"
+            cases = st.get(target_key, [])
+            real_proposals: List[ActionProposal] = []
+            for c in cases:
+                amt = c.get("amount_inr", 0.0)
+                cid = c.get("customer_id", f"CUST-{c.get('id', 'PROV')}")
+                cname = c.get("customer_name") or c.get("customer_context", {}).get("name", "Real Customer")
+                real_proposals.append(
+                    ActionProposal(
+                        proposal_id=f"PROP-{c.get('id', uuid.uuid4().hex[:6])}",
+                        tenant_id=merchant_id,
+                        customer_id=cid,
+                        customer_name=cname,
+                        opportunity_id=c.get("id", f"OPP-{c.get('id', '1')}"),
+                        agent_id="AGENT-LIVE-RZP",
+                        agent_type=AgentCategory.SUBSCRIPTION_AGENT,
+                        action_type="SCHEDULE_MANDATE_RETRY",
+                        amount_paise=int(round(amt * 100)),
+                        direct_cost_paise=400,
+                        discount_cost_paise=0,
+                        expected_recovery_probability=c.get("recovery_probability", 0.75),
+                        expected_natural_recovery_probability=0.15,
+                        estimated_incremental_uplift=max(0.0, c.get("recovery_probability", 0.75) - 0.15),
+                        friction_score=0.10,
+                        customer_attention_units=1,
+                        urgency_score=0.80,
+                        risk_score=c.get("risk_score", 0.1),
+                        authorization_state="AUTHORIZED",
+                    )
+                )
+            return real_proposals
+        else:
+            return list(self._proposals_pool)
+
+    def get_all_proposals(self, merchant_id: str = "default", is_real_mode: bool = False) -> List[Dict[str, Any]]:
+        pool = self.get_proposals_for_workspace(merchant_id=merchant_id, is_real_mode=is_real_mode)
+        for p in pool:
             p.compute_auction_metrics()
-        return [p.to_dict() for p in self._proposals_pool]
+        return [p.to_dict() for p in pool]
 
     def run_auction(
         self,
         recovery_budget_inr: float = 500.0,
         contact_limit: int = 50,
         reserve_budget_pct: float = 0.20,
+        merchant_id: str = "default",
+        is_real_mode: bool = False,
     ) -> Dict[str, Any]:
         """
         Runs the Global Recovery Auction:
@@ -162,12 +204,13 @@ class RecoveryAuctionEngine:
         3. Global Knapsack Allocation: Fits winning proposals into spend budget & contact limit.
         4. Counterfactual Delta: Calculates opportunity cost against runner-up proposal.
         """
+        pool = self.get_proposals_for_workspace(merchant_id=merchant_id, is_real_mode=is_real_mode)
         usable_budget_inr = round(recovery_budget_inr * (1.0 - reserve_budget_pct), 2)
         usable_budget_paise = int(round(usable_budget_inr * 100))
         reserve_budget_inr = round(recovery_budget_inr * reserve_budget_pct, 2)
 
         # 1. Compute metrics for all proposals
-        for p in self._proposals_pool:
+        for p in pool:
             p.compute_auction_metrics()
             p.status = ProposalStatus.PENDING
             p.suppression_reason = None
@@ -175,7 +218,7 @@ class RecoveryAuctionEngine:
 
         # 2. Group by Customer ID to enforce One Customer, One Recovery Decision
         customer_proposals: Dict[str, List[ActionProposal]] = {}
-        for p in self._proposals_pool:
+        for p in pool:
             customer_proposals.setdefault(p.customer_id, []).append(p)
 
         candidate_winners: List[ActionProposal] = []
@@ -268,7 +311,7 @@ class RecoveryAuctionEngine:
                 "remaining_contacts": max(0, contact_limit - spent_contacts),
             },
             "auction_summary": {
-                "total_proposals_evaluated": len(self._proposals_pool),
+                "total_proposals_evaluated": len(pool),
                 "approved_count": len(approved_proposals),
                 "suppressed_count": len(suppressed_proposals),
                 "abstained_count": len(abstained_proposals),
@@ -279,15 +322,31 @@ class RecoveryAuctionEngine:
             "approved_proposals": [p.to_dict() for p in approved_proposals],
             "suppressed_proposals": [p.to_dict() for p in suppressed_proposals],
             "abstained_proposals": [p.to_dict() for p in abstained_proposals],
-            "all_proposals": [p.to_dict() for p in self._proposals_pool],
+            "all_proposals": [p.to_dict() for p in pool],
         }
 
-    def get_counterfactual_breakdown(self, customer_id: str = "CUST-9821") -> Dict[str, Any]:
+    def get_counterfactual_breakdown(
+        self,
+        customer_id: str = "CUST-9821",
+        merchant_id: str = "default",
+        is_real_mode: bool = False,
+    ) -> Dict[str, Any]:
         """
         Provides the forensic counterfactual Winner vs. Runner-Up analysis for a specific customer.
         """
-        props = [p for p in self._proposals_pool if p.customer_id == customer_id]
+        pool = self.get_proposals_for_workspace(merchant_id=merchant_id, is_real_mode=is_real_mode)
+        props = [p for p in pool if p.customer_id == customer_id]
         if not props:
+            if is_real_mode:
+                return {
+                    "customer_id": customer_id,
+                    "customer_name": "Active Customer",
+                    "winner": None,
+                    "runner_up": None,
+                    "opportunity_cost_inr": 0.0,
+                    "decision_explanation": "No active competing proposals found for this customer in live environment.",
+                    "competing_proposals": [],
+                }
             raise ValueError(f"No proposals found for customer {customer_id}")
 
         for p in props:

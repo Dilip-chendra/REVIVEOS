@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
-"""ReviveAI -- Recovery Capital Allocator & Opportunity Portfolio Router"""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
-from app.auth import get_current_user
+from app.auth import get_current_user, get_effective_mode
 from app.models.user import User
 from app.services.capital_allocator import recovery_capital_allocator
 from app.services.attribution_regret_engine import attribution_regret_engine
@@ -89,25 +87,33 @@ class ReconcilePaymentRequest(BaseModel):
 
 
 @router.get("/current")
-async def get_current_portfolio(current_user: User = Depends(get_current_user)):
-    res = recovery_capital_allocator.allocate(merchant_id=current_user.merchant_id)
+async def get_current_portfolio(request: Request, current_user: User = Depends(get_current_user)):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
+    res = recovery_capital_allocator.allocate(
+        merchant_id=current_user.merchant_id,
+        is_real_mode=is_real,
+    )
     return res
 
 
 @router.post("/optimize")
-async def optimize_portfolio_allocation(req: OptimizeRequest, current_user: User = Depends(get_current_user)):
+async def optimize_portfolio_allocation(req: OptimizeRequest, request: Request, current_user: User = Depends(get_current_user)):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
     res = recovery_capital_allocator.allocate(
         recovery_budget_inr=req.recovery_budget_inr,
         contact_limit=req.contact_limit,
         reserve_budget_pct=req.reserve_budget_pct,
         risk_tolerance=req.risk_tolerance,
         merchant_id=current_user.merchant_id,
+        is_real_mode=is_real,
     )
     return res
 
 
 @router.post("/settle")
-async def simulate_settlement(req: SettlementSyncRequest):
+async def simulate_settlement(req: SettlementSyncRequest, request: Request, current_user: User = Depends(get_current_user)):
     res = attribution_regret_engine.simulate_settlement_sync(
         recovery_budget_inr=req.recovery_budget_inr,
         contact_limit=req.contact_limit,
@@ -116,7 +122,7 @@ async def simulate_settlement(req: SettlementSyncRequest):
 
 
 @router.get("/regret")
-async def get_regret_matrix():
+async def get_regret_matrix(request: Request, current_user: User = Depends(get_current_user)):
     return attribution_regret_engine.get_latest_settlement_result()
 
 
@@ -173,7 +179,7 @@ async def simulate_policy_impact(req: PolicySimulateRequest):
 
 
 @router.post("/arbitrate-agents")
-async def arbitrate_competing_agents(req: ArbitrateAgentsRequest):
+async def arbitrate_competing_agents(req: ArbitrateAgentsRequest, request: Request, current_user: User = Depends(get_current_user)):
     res = multi_agent_arbitrator.arbitrate(
         customer_id=req.customer_id,
         customer_name=req.customer_name,
@@ -182,7 +188,7 @@ async def arbitrate_competing_agents(req: ArbitrateAgentsRequest):
 
 
 @router.get("/attention-ledger")
-async def get_customer_attention_ledger():
+async def get_customer_attention_ledger(request: Request, current_user: User = Depends(get_current_user)):
     return {
         "records": multi_agent_arbitrator.get_all_attention_records(),
         "total_managed_customers": len(multi_agent_arbitrator._attention_ledger),
@@ -191,7 +197,7 @@ async def get_customer_attention_ledger():
 
 
 @router.post("/generate-recovery-link")
-async def generate_customer_recovery_link(req: GenerateLinkRequest):
+async def generate_customer_recovery_link(req: GenerateLinkRequest, request: Request, current_user: User = Depends(get_current_user)):
     try:
         res = recovery_conversion_service.generate_customer_recovery_link(req.opportunity_id)
         return res
@@ -200,7 +206,7 @@ async def generate_customer_recovery_link(req: GenerateLinkRequest):
 
 
 @router.post("/reconcile-payment")
-async def reconcile_confirmed_payment(req: ReconcilePaymentRequest):
+async def reconcile_confirmed_payment(req: ReconcilePaymentRequest, request: Request, current_user: User = Depends(get_current_user)):
     try:
         res = recovery_conversion_service.simulate_customer_payment_completion(
             opportunity_id=req.opportunity_id,
@@ -212,10 +218,15 @@ async def reconcile_confirmed_payment(req: ReconcilePaymentRequest):
 
 
 @router.get("/recovery-ledger")
-async def get_forensic_recovery_ledger():
+async def get_forensic_recovery_ledger(request: Request, current_user: User = Depends(get_current_user)):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
+    outcomes = recovery_conversion_service.get_all_outcomes()
+    if is_real:
+        outcomes = [o for o in outcomes if o.get("outcome_provenance") != "SIMULATION"]
     return {
-        "outcomes": recovery_conversion_service.get_all_outcomes(),
-        "total_records": len(recovery_conversion_service._outcomes_ledger),
+        "outcomes": outcomes,
+        "total_records": len(outcomes),
         "precision": "INTEGER_MINOR_PAISA",
     }
 
@@ -226,34 +237,62 @@ async def get_recovery_conversion_funnel(current_user: User = Depends(get_curren
 
 
 @router.get("/auction/proposals")
-async def get_all_auction_proposals():
+async def get_all_auction_proposals(request: Request, current_user: User = Depends(get_current_user)):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
+    props = recovery_auction_engine.get_all_proposals(merchant_id=current_user.merchant_id, is_real_mode=is_real)
     return {
-        "proposals": recovery_auction_engine.get_all_proposals(),
-        "total_proposals": len(recovery_auction_engine._proposals_pool),
+        "proposals": props,
+        "total_proposals": len(props),
     }
 
 
 @router.post("/auction/run")
-async def run_recovery_auction(req: RunAuctionRequest):
+async def run_recovery_auction(req: RunAuctionRequest, request: Request, current_user: User = Depends(get_current_user)):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
     return recovery_auction_engine.run_auction(
         recovery_budget_inr=req.recovery_budget_inr,
         contact_limit=req.contact_limit,
         reserve_budget_pct=req.reserve_budget_pct,
+        merchant_id=current_user.merchant_id,
+        is_real_mode=is_real,
     )
 
 
 @router.get("/auction-counterfactual")
 @router.get("/auction/counterfactual/{customer_id}")
-async def get_counterfactual_opportunity_cost(customer_id: str = "CUST-9821"):
+async def get_counterfactual_opportunity_cost(customer_id: str = "CUST-9821", request: Request = None, current_user: User = Depends(get_current_user)):
+    mode = get_effective_mode(request, current_user) if request else "demo"
+    is_real = mode == "real"
     try:
-        return recovery_auction_engine.get_counterfactual_breakdown(customer_id)
+        return recovery_auction_engine.get_counterfactual_breakdown(
+            customer_id=customer_id,
+            merchant_id=current_user.merchant_id,
+            is_real_mode=is_real,
+        )
     except Exception as e:
+        if is_real:
+            return {
+                "customer_id": customer_id,
+                "customer_name": "Active Customer",
+                "winner": None,
+                "runner_up": None,
+                "opportunity_cost_inr": 0.0,
+                "decision_explanation": "No active competing proposals for this customer in live environment.",
+                "competing_proposals": [],
+            }
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/execute-batch")
-async def execute_allocated_batch(req: ExecuteBatchRequest):
-    alloc_res = recovery_capital_allocator.allocate()
+async def execute_allocated_batch(req: ExecuteBatchRequest, request: Request, current_user: User = Depends(get_current_user)):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
+    alloc_res = recovery_capital_allocator.allocate(
+        merchant_id=current_user.merchant_id,
+        is_real_mode=is_real,
+    )
     pursue_ids = [o["id"] if isinstance(o, dict) else o for o in alloc_res.buckets.get("PURSUE", [])]
     
     if req.opportunity_ids:

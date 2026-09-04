@@ -181,16 +181,28 @@ async def register_agent(
 @router.get("/opportunities/{opportunity_id}/context")
 async def get_opportunity_context(
     opportunity_id: str,
+    request: Request,
     x_reviveos_agent_id: Optional[str] = Header(None, alias="X-ReviveOS-Agent-ID"),
     current_user: Optional[User] = Depends(get_current_user),
 ):
     from app.state import get_state
+    from app.auth import get_effective_mode
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
     tenant_id = current_user.merchant_id if current_user else "default"
     state = get_state(tenant_id)
-    cases = state.get("cases", [])
+    env = state.get("active_environment", "DEMO")
+    if is_real or env in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL"):
+        target_key = "provider_live_cases" if env == "RAZORPAY_LIVE" else "provider_test_cases"
+        cases = state.get(target_key, [])
+    else:
+        cases = state.get("demo_cases", state.get("cases", []))
+
     opp = next((c for c in cases if c.get("id") == opportunity_id or c.get("case_id") == opportunity_id), None)
 
     if not opp:
+        if is_real:
+            raise HTTPException(status_code=404, detail=f"Opportunity '{opportunity_id}' not found in real provider cases.")
         opp = {
             "id": opportunity_id,
             "amount_inr": 4999.0,

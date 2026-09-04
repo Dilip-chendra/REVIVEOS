@@ -1,9 +1,9 @@
 """ReviveAI — Recovery & Trust-Aware Decision Control Plane Router (merchant-scoped)"""
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, Any, Dict, List
-from app.auth import get_current_user
+from app.auth import get_current_user, get_effective_mode
 from app.models.user import User
 from app.state import (
     get_state, add_audit_event, _sync_active_cases_and_metrics,
@@ -175,6 +175,7 @@ async def toggle_shadow_mode(
 @router.get("/brain/{case_id}")
 async def get_recovery_brain_decision(
     case_id: str,
+    request: Request,
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -182,10 +183,21 @@ async def get_recovery_brain_decision(
     Returns the complete decision orchestration, 10-node decision graph,
     5-tier trust score, data quality checklist, and 'Why Not?' explainability matrix.
     """
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
     mid = current_user.merchant_id
-    cases = get_state(mid).get("cases", [])
-    raw = next((c for c in cases if c["id"] == case_id), None)
+    state = get_state(mid)
+    env = state.get("active_environment", "DEMO")
+    if is_real or env in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL"):
+        target_key = "provider_live_cases" if env == "RAZORPAY_LIVE" else "provider_test_cases"
+        cases = state.get(target_key, [])
+    else:
+        cases = state.get("demo_cases", state.get("cases", []))
+
+    raw = next((c for c in cases if c.get("id") == case_id or c.get("case_id") == case_id), None)
     if not raw:
+        if is_real:
+            raise HTTPException(status_code=404, detail=f"Case '{case_id}' not found in real provider cases.")
         from app.services.opportunity_service import opportunity_service
         opp = opportunity_service.get_opportunity(case_id)
         if opp:
@@ -215,7 +227,6 @@ async def get_recovery_brain_decision(
         else:
             raise HTTPException(status_code=404, detail="Case not found")
 
-    state = get_state(mid)
     is_shadow = state.get("shadow_mode", False)
 
     # Convert to NormalizedCase
@@ -329,16 +340,34 @@ async def compare_strategies(req: StrategyComparisonRequest):
 
 
 @router.get("/opportunities")
-async def get_opportunities(current_user: User = Depends(get_current_user)):
-    cases = get_state(current_user.merchant_id).get("cases", [])
+async def get_opportunities(request: Request, current_user: User = Depends(get_current_user)):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
+    mid = current_user.merchant_id
+    state = get_state(mid)
+    env = state.get("active_environment", "DEMO")
+    if is_real or env in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL"):
+        target_key = "provider_live_cases" if env == "RAZORPAY_LIVE" else "provider_test_cases"
+        cases = state.get(target_key, [])
+    else:
+        cases = state.get("demo_cases", state.get("cases", []))
     open_cases = [c for c in cases if c.get("status") == "open"]
     open_cases.sort(key=lambda x: x.get("expected_recovery_value_inr", 0), reverse=True)
     return open_cases[:20]
 
 
 @router.get("/human-queue")
-async def get_human_queue(current_user: User = Depends(get_current_user)):
-    cases = get_state(current_user.merchant_id).get("cases", [])
+async def get_human_queue(request: Request, current_user: User = Depends(get_current_user)):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
+    mid = current_user.merchant_id
+    state = get_state(mid)
+    env = state.get("active_environment", "DEMO")
+    if is_real or env in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL"):
+        target_key = "provider_live_cases" if env == "RAZORPAY_LIVE" else "provider_test_cases"
+        cases = state.get(target_key, [])
+    else:
+        cases = state.get("demo_cases", state.get("cases", []))
     queue = [
         c for c in cases
         if c.get("is_human_required")
@@ -352,16 +381,27 @@ async def get_human_queue(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/{case_id}")
-async def get_case(case_id: str, current_user: User = Depends(get_current_user)):
-    cases = get_state(current_user.merchant_id).get("cases", [])
-    case = next((c for c in cases if c["id"] == case_id), None)
+async def get_case(case_id: str, request: Request, current_user: User = Depends(get_current_user)):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
+    mid = current_user.merchant_id
+    state = get_state(mid)
+    env = state.get("active_environment", "DEMO")
+    if is_real or env in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL"):
+        target_key = "provider_live_cases" if env == "RAZORPAY_LIVE" else "provider_test_cases"
+        cases = state.get(target_key, [])
+    else:
+        cases = state.get("demo_cases", state.get("cases", []))
+    case = next((c for c in cases if c.get("id") == case_id or c.get("case_id") == case_id), None)
     if not case:
+        if is_real:
+            raise HTTPException(status_code=404, detail=f"Case '{case_id}' not found in real provider cases.")
         from app.services.opportunity_service import opportunity_service
         opp = opportunity_service.get_opportunity(case_id)
         if opp:
             case = {
                 "id": opp["id"],
-                "merchant_id": mid if 'mid' in locals() else current_user.merchant_id,
+                "merchant_id": mid,
                 "amount_inr": opp["amount_inr"],
                 "customer_id": opp["customer_id"],
                 "customer_name": opp["customer_name"],

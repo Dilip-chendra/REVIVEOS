@@ -72,8 +72,6 @@ async def connect_razorpay(req: ConnectRequest, current_user: User = Depends(get
 
     # 1. Clear old cached client instances
     razorpay_service.clear_client(merchant_id)
-    if merchant_id != "default":
-        razorpay_service.clear_client("default")
 
     # 2. Environment mismatch detection
     requested_env = req.environment or ("live" if final_key.startswith("rzp_live_") else "test")
@@ -129,10 +127,7 @@ async def test_connection(current_user: User = Depends(get_current_user)):
     Perform a live active ping against Razorpay API.
     """
     merchant_id = current_user.merchant_id
-    res = razorpay_service.test_connection(merchant_id)
-    if not res.get("success") and merchant_id != "default":
-        res = razorpay_service.test_connection("default")
-    return res
+    return razorpay_service.test_connection(merchant_id)
 
 
 @router.get("/raw-records")
@@ -142,8 +137,6 @@ async def get_raw_records(count: int = 50, current_user: User = Depends(get_curr
     """
     merchant_id = current_user.merchant_id
     records = razorpay_service.get_raw_provider_records(merchant_id, count=count)
-    if not records and merchant_id != "default":
-        records = razorpay_service.get_raw_provider_records("default", count=count)
     return {
         "count": len(records),
         "records": records,
@@ -183,8 +176,6 @@ async def sync_now(max_records: int = 200, current_user: User = Depends(get_curr
     """
     merchant_id = current_user.merchant_id
     res = sync_service.sync_now(merchant_id, max_records=max_records)
-    if merchant_id != "default" and res.get("success"):
-        sync_service.sync_now("default", max_records=max_records)
     return res
 
 
@@ -273,8 +264,6 @@ async def get_integration_health(current_user: User = Depends(get_current_user))
     """
     merchant_id = current_user.merchant_id
     masked = credential_store.get_masked_credentials(merchant_id, "razorpay")
-    if not masked.get("is_configured") and merchant_id != "default":
-        masked = credential_store.get_masked_credentials("default", "razorpay")
 
     state = get_state(merchant_id)
     history = sync_service.get_history(merchant_id)

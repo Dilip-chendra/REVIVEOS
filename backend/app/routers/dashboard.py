@@ -1,51 +1,93 @@
 """ReviveAI 2.0 — Dashboard & Revenue Monetization Command Center Router"""
-from fastapi import APIRouter, Depends
-from app.auth import get_current_user
+from fastapi import APIRouter, Depends, Request
+from app.auth import get_current_user, get_effective_mode
 from app.models.user import User
 from app.state import get_state
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 
-@router.get("/metrics")
-async def get_metrics(current_user: User = Depends(get_current_user)):
+def _get_mode_cases_and_env(request: Request, current_user: User):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
     mid = current_user.merchant_id
     state = get_state(mid)
     env = state.get("active_environment", "DEMO")
+    if is_real or env in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL"):
+        target_key = "provider_live_cases" if env == "RAZORPAY_LIVE" else "provider_test_cases"
+        cases = state.get(target_key, [])
+        return cases, env if env in ("RAZORPAY_TEST", "RAZORPAY_LIVE") else "RAZORPAY_TEST", True, state
+    return state.get("demo_cases", state.get("cases", [])), "DEMO", False, state
+
+
+@router.get("/metrics")
+async def get_metrics(request: Request, current_user: User = Depends(get_current_user)):
+    cases, env, is_real, state = _get_mode_cases_and_env(request, current_user)
     
     # Ensure DEMO mode always has its 7 rich scenarios and metrics ready
-    if env == "DEMO" and (not state.get("cases") or not state.get("metrics") or state.get("metrics", {}).get("revenue_at_risk_inr", 0) == 0):
+    if not is_real and env == "DEMO" and (not state.get("cases") or not state.get("metrics") or state.get("metrics", {}).get("revenue_at_risk_inr", 0) == 0):
         from app.state import _sync_active_cases_and_metrics
-        _sync_active_cases_and_metrics(mid)
-        state = get_state(mid)
+        _sync_active_cases_and_metrics(current_user.merchant_id)
+        state = get_state(current_user.merchant_id)
+
+    if is_real:
+        total_at_risk = sum(float(c.get("amount_inr", 0)) for c in cases)
+        recoverable_cases = [c for c in cases if float(c.get("recovery_probability", 0)) > 0.3]
+        recoverable_total = sum(float(c.get("expected_recovery_value_inr", 0)) for c in recoverable_cases)
+        recovered_cases = [c for c in cases if c.get("status") == "recovered"]
+        revenue_recovered = sum(float(c.get("amount_inr", 0)) for c in recovered_cases)
+        rec_rate = (len(recovered_cases) / len(cases)) if cases else 0.0
+        attempts = sum(1 for c in cases if c.get("status") in ("in_progress", "recovered", "failed"))
+        escalations = sum(1 for c in cases if c.get("is_human_required") or c.get("status") == "escalated")
+        blocked = sum(1 for c in cases if (c.get("recovery_result") or {}).get("blocked", False))
+
+        return {
+            "active_environment":       env,
+            "is_real_provider_data":    True,
+            "revenue_at_risk_inr":      total_at_risk,
+            "recoverable_revenue_inr":  recoverable_total,
+            "revenue_recovered_inr":    revenue_recovered,
+            "recovery_rate":            rec_rate,
+            "recovery_attempts":        attempts,
+            "human_escalations":        escalations,
+            "blocked_unsafe_actions":   blocked,
+            "open_cases":               len([c for c in cases if c.get("status") not in ("recovered", "failed", "closed")]),
+            "recovered_cases":          len(recovered_cases),
+            "failed_cases":             len([c for c in cases if c.get("status") == "failed"]),
+            "total_cases":              len(cases),
+            "ai_enabled":               True,
+            "razorpay_enabled":         True,
+            "simulation_run":           True,
+            "last_updated":             state.get("completed_at"),
+            "last_synced_at":           state.get("last_sync_at"),
+        }
 
     metrics = state.get("metrics", {})
     return {
         "active_environment":       env,
-        "is_real_provider_data":    metrics.get("is_real_provider_data", False),
-        "revenue_at_risk_inr":      metrics.get("revenue_at_risk_inr", 1144898.0 if env == "DEMO" else 0.0),
-        "recoverable_revenue_inr":  metrics.get("recoverable_revenue_inr", 1132398.0 if env == "DEMO" else 0.0),
+        "is_real_provider_data":    False,
+        "revenue_at_risk_inr":      metrics.get("revenue_at_risk_inr", 1144898.0),
+        "recoverable_revenue_inr":  metrics.get("recoverable_revenue_inr", 1132398.0),
         "revenue_recovered_inr":    metrics.get("revenue_recovered_inr", 0.0),
-        "recovery_rate":            metrics.get("recovery_rate", 0.76 if env == "DEMO" else 0.0),
-        "recovery_attempts":        metrics.get("recovery_attempts", 5 if env == "DEMO" else 0),
-        "human_escalations":        metrics.get("human_escalations", 2 if env == "DEMO" else 0),
-        "blocked_unsafe_actions":   metrics.get("blocked_unsafe_actions", 3 if env == "DEMO" else 0),
-        "open_cases":               metrics.get("open_cases", 7 if env == "DEMO" else 0),
+        "recovery_rate":            metrics.get("recovery_rate", 0.76),
+        "recovery_attempts":        metrics.get("recovery_attempts", 5),
+        "human_escalations":        metrics.get("human_escalations", 2),
+        "blocked_unsafe_actions":   metrics.get("blocked_unsafe_actions", 3),
+        "open_cases":               metrics.get("open_cases", 7),
         "recovered_cases":          metrics.get("recovered_cases", 0),
         "failed_cases":             metrics.get("failed_cases", 0),
-        "total_cases":              metrics.get("total_cases", 7 if env == "DEMO" else 0),
-        "ai_enabled": True,
-        "razorpay_enabled":         state.get("razorpay_enriched", False) or metrics.get("is_real_provider_data", False),
-        "simulation_run": True,
+        "total_cases":              metrics.get("total_cases", 7),
+        "ai_enabled":               True,
+        "razorpay_enabled":         state.get("razorpay_enriched", False),
+        "simulation_run":           True,
         "last_updated":             state.get("completed_at"),
         "last_synced_at":           state.get("last_sync_at"),
     }
 
 
 @router.get("/leakage-map")
-async def get_revenue_leakage_map(current_user: User = Depends(get_current_user)):
-    state = get_state(current_user.merchant_id)
-    cases = state.get("cases", [])
+async def get_revenue_leakage_map(request: Request, current_user: User = Depends(get_current_user)):
+    cases, env, is_real, state = _get_mode_cases_and_env(request, current_user)
     
     categories = {
         "b2b_timing": {
@@ -156,9 +198,8 @@ async def get_revenue_leakage_map(current_user: User = Depends(get_current_user)
 
 
 @router.get("/opportunity-queue")
-async def get_opportunity_queue(current_user: User = Depends(get_current_user)):
-    state = get_state(current_user.merchant_id)
-    cases = state.get("cases", [])
+async def get_opportunity_queue(request: Request, current_user: User = Depends(get_current_user)):
+    cases, env, is_real, state = _get_mode_cases_and_env(request, current_user)
     
     ranked = []
     for c in cases:
@@ -170,9 +211,10 @@ async def get_opportunity_queue(current_user: User = Depends(get_current_user)):
         friction_val = 0.8 if c.get("failure_code") == "CARD_EXPIRED" else 0.2
         opp_score = round(ev / (risk * 0.4 + friction_val * 0.3 + 0.3), 1)
         
+        default_name = "Valued Customer" if is_real else "Enterprise Client"
         ranked.append({
             "case_id": c.get("id"),
-            "customer_name": c.get("customer_name", "Enterprise Client"),
+            "customer_name": c.get("customer_name") or default_name,
             "amount_inr": amt,
             "recovery_probability": prob,
             "expected_incremental_recovery_inr": ev,
@@ -190,18 +232,18 @@ async def get_opportunity_queue(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/provenance")
-async def get_financial_provenance(current_user: User = Depends(get_current_user)):
-    state = get_state(current_user.merchant_id)
-    cases = state.get("cases", [])
+async def get_financial_provenance(request: Request, current_user: User = Depends(get_current_user)):
+    cases, env, is_real, state = _get_mode_cases_and_env(request, current_user)
     
     lineage_items = []
     for c in cases:
         amt = float(c.get("amount_inr", 0))
         rec_res = c.get("recovery_result") or {}
         rec_amt = float(rec_res.get("amount_recovered_inr", amt if c.get("status") == "recovered" else 0.0))
+        default_name = "Valued Customer" if is_real else "Enterprise Client"
         lineage_items.append({
             "case_id": c.get("id"),
-            "customer_name": c.get("customer_name"),
+            "customer_name": c.get("customer_name") or default_name,
             "amount_inr": amt,
             "status": c.get("status"),
             "strategy": c.get("recommended_strategy"),
@@ -210,7 +252,7 @@ async def get_financial_provenance(current_user: User = Depends(get_current_user
         })
     
     sum_cases = sum(item["amount_inr"] for item in lineage_items)
-    dashboard_metric = state.get("metrics", {}).get("revenue_at_risk_inr", sum_cases)
+    dashboard_metric = sum_cases if is_real else state.get("metrics", {}).get("revenue_at_risk_inr", sum_cases)
     drift = round(dashboard_metric - sum_cases, 2)
     
     return {
@@ -225,10 +267,19 @@ async def get_financial_provenance(current_user: User = Depends(get_current_user
 
 
 @router.get("/funnel")
-async def get_funnel(current_user: User = Depends(get_current_user)):
-    state = get_state(current_user.merchant_id)
-    if not state.get("has_run"):
-        return {"stages": []}
+async def get_funnel(request: Request, current_user: User = Depends(get_current_user)):
+    cases, env, is_real, state = _get_mode_cases_and_env(request, current_user)
+    if is_real:
+        total_at_risk = sum(float(c.get("amount_inr", 0)) for c in cases)
+        recoverable_cases = [c for c in cases if float(c.get("recovery_probability", 0)) > 0.3]
+        recoverable_total = sum(float(c.get("expected_recovery_value_inr", 0)) for c in recoverable_cases)
+        return {
+            "stages": [
+                {"name": "Revenue at Risk",  "amount_inr": total_at_risk,     "count": len(cases)},
+                {"name": "Recoverable",      "amount_inr": recoverable_total, "count": len(recoverable_cases)},
+                {"name": "Attempted",        "amount_inr": 0.0,               "count": 0},
+            ]
+        }
 
     metrics = state.get("metrics", {})
     return {
@@ -332,8 +383,19 @@ async def get_gateway_intelligence(current_user: User = Depends(get_current_user
 
 
 @router.get("/category-breakdown")
-async def get_category_breakdown(current_user: User = Depends(get_current_user)):
-    state = get_state(current_user.merchant_id)
+async def get_category_breakdown(request: Request, current_user: User = Depends(get_current_user)):
+    cases, env, is_real, state = _get_mode_cases_and_env(request, current_user)
+    if is_real:
+        cat_counts: dict[str, int] = {}
+        cat_amounts: dict[str, float] = {}
+        for c in cases:
+            cat = c.get("failure_category", "unknown")
+            cat_counts[cat] = cat_counts.get(cat, 0) + 1
+            cat_amounts[cat] = cat_amounts.get(cat, 0.0) + float(c.get("amount_inr", 0.0))
+        return [
+            {"category": k, "count": v, "amount_inr": cat_amounts.get(k, 0.0), "recovery_rate": 0.0}
+            for k, v in cat_counts.items()
+        ]
     breakdown = state.get("metrics", {}).get("category_breakdown", {})
     return [{"category": k, "count": v, "amount_inr": 0, "recovery_rate": 0.0}
             for k, v in breakdown.items()]
@@ -342,48 +404,40 @@ async def get_category_breakdown(current_user: User = Depends(get_current_user))
 # ── Economic Brain Endpoints ───────────────────────────────────────────────────
 
 @router.get("/recovery-forecast")
-async def get_recovery_forecast(current_user: User = Depends(get_current_user)):
+async def get_recovery_forecast(request: Request, current_user: User = Depends(get_current_user)):
     """Forward-looking revenue recovery forecast — labeled [FORECAST]/[ESTIMATED]."""
     from app.services.recovery_forecast import recovery_forecast_service
-    mid = current_user.merchant_id
-    state = get_state(mid)
-    env = state.get("active_environment", "DEMO")
-    cases = state.get("cases", [])
+    cases, env, is_real, state = _get_mode_cases_and_env(request, current_user)
     safety_metrics = state.get("safety_metrics", {})
-    is_real = env in ("RAZORPAY_TEST", "RAZORPAY_LIVE")
     forecast = recovery_forecast_service.generate_forecast(
-        merchant_id=mid,
+        merchant_id=current_user.merchant_id,
         opportunities=cases,
         safety_metrics=safety_metrics,
         budget_total_inr=10000.0,
-        budget_used_inr=state.get("metrics", {}).get("revenue_recovered_inr", 0.0) / 10.0,
+        budget_used_inr=0.0 if is_real else state.get("metrics", {}).get("revenue_recovered_inr", 0.0) / 10.0,
         contact_cap_total=500,
-        contact_cap_used=safety_metrics.get("customer_prompts_sent", 0),
+        contact_cap_used=0 if is_real else safety_metrics.get("customer_prompts_sent", 0),
         is_real_mode=is_real,
     )
     return forecast.to_dict()
 
 
 @router.get("/recovery-inventory")
-async def get_recovery_inventory(current_user: User = Depends(get_current_user)):
+async def get_recovery_inventory(request: Request, current_user: User = Depends(get_current_user)):
     """Recovery Inventory: pursue now / wait / leave alone / uncertain."""
     from app.services.recovery_forecast import recovery_forecast_service
-    mid = current_user.merchant_id
-    state = get_state(mid)
-    env = state.get("active_environment", "DEMO")
-    cases = state.get("cases", [])
-    is_real = env in ("RAZORPAY_TEST", "RAZORPAY_LIVE")
+    cases, env, is_real, state = _get_mode_cases_and_env(request, current_user)
     if is_real and not cases:
         return {
             "active_environment": env,
-            "message": "No real recovery opportunities found. \u20b90 exposure.",
+            "message": "No real recovery opportunities found. ₹0 exposure.",
             "pursue_now": {"count": 0, "total_exposure_inr": 0.0},
             "wait_and_watch": {"count": 0},
             "leave_alone": {"count": 0},
             "uncertain": {"count": 0},
         }
     forecast = recovery_forecast_service.generate_forecast(
-        merchant_id=mid,
+        merchant_id=current_user.merchant_id,
         opportunities=cases,
         safety_metrics=state.get("safety_metrics", {}),
         is_real_mode=is_real,
@@ -395,14 +449,11 @@ async def get_recovery_inventory(current_user: User = Depends(get_current_user))
 
 
 @router.get("/opportunity-graph")
-async def get_opportunity_graph(current_user: User = Depends(get_current_user)):
+async def get_opportunity_graph(request: Request, current_user: User = Depends(get_current_user)):
     """Revenue Opportunity Graph: relationships and failure clusters across opportunities."""
     from app.services.opportunity_graph import opportunity_graph
-    mid = current_user.merchant_id
-    state = get_state(mid)
-    env = state.get("active_environment", "DEMO")
-    cases = state.get("cases", [])
-    if env in ("RAZORPAY_TEST", "RAZORPAY_LIVE") and not cases:
+    cases, env, is_real, state = _get_mode_cases_and_env(request, current_user)
+    if is_real and not cases:
         return {
             "active_environment": env,
             "built_at": None,

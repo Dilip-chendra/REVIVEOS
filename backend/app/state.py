@@ -83,9 +83,10 @@ def _blank_state(merchant_id: str = "default") -> dict:
     recoverable_cases = [c for c in demo_cases if c.get("recovery_probability", 0) > 0.3]
     recoverable_total = sum(c.get("expected_recovery_value_inr", 0) for c in recoverable_cases)
     
-    default_test = list(_merchant_states.get("default", {}).get("provider_test_cases", [])) if merchant_id != "default" else []
-    default_live = list(_merchant_states.get("default", {}).get("provider_live_cases", [])) if merchant_id != "default" else []
-    default_env = _merchant_states.get("default", {}).get("active_environment", "DEMO") if merchant_id != "default" else "DEMO"
+    # Strict per-tenant state: never copy or inherit cases from 'default'
+    default_test: list[dict] = []
+    default_live: list[dict] = []
+    default_env = "DEMO"
     
     state = {
         "active_environment": default_env,  # DEMO | RAZORPAY_TEST | RAZORPAY_LIVE
@@ -96,7 +97,7 @@ def _blank_state(merchant_id: str = "default") -> dict:
         "demo_cases": demo_cases,
         "provider_test_cases": default_test,
         "provider_live_cases": default_live,
-        "cases": demo_cases if default_env == "DEMO" else (default_test if default_env == "RAZORPAY_TEST" else default_live),
+        "cases": demo_cases,
         "global_kill_switch_enabled": False,
         "incident_mode": "NORMAL",  # NORMAL | DEGRADED | PROTECTIVE | EMERGENCY_STOP
         "safety_metrics": {
@@ -177,7 +178,9 @@ def reset_state(merchant_id: str = "default") -> dict:
     new_st = _blank_state(merchant_id)
     new_st["provider_test_cases"] = saved_test
     new_st["provider_live_cases"] = saved_live
+    new_st["active_environment"] = "DEMO"
     _merchant_states[merchant_id] = new_st
+    _sync_active_cases_and_metrics(merchant_id)
     return _merchant_states[merchant_id]
 
 
@@ -227,12 +230,6 @@ def set_active_environment(merchant_id: str, env_name: str) -> dict:
     state = get_state(merchant_id)
     state["active_environment"] = env_name
     _sync_active_cases_and_metrics(merchant_id)
-    
-    if merchant_id == "default":
-        for mid, st in _merchant_states.items():
-            if mid != "default":
-                st["active_environment"] = env_name
-                _sync_active_cases_and_metrics(mid)
     return state
 
 
@@ -243,16 +240,6 @@ def set_provider_cases(merchant_id: str, env_slot: str, cases: list[dict]) -> No
     elif env_slot.lower() in ("live", "razorpay_live"):
         state["provider_live_cases"] = cases
     _sync_active_cases_and_metrics(merchant_id)
-
-    # If setting for default, sync to all existing merchant state objects
-    if merchant_id == "default":
-        for mid, st in _merchant_states.items():
-            if mid != "default":
-                if env_slot.lower() in ("test", "razorpay_test"):
-                    st["provider_test_cases"] = cases
-                elif env_slot.lower() in ("live", "razorpay_live"):
-                    st["provider_live_cases"] = cases
-                _sync_active_cases_and_metrics(mid)
 
 
 def _sync_active_cases_and_metrics(merchant_id: str) -> None:

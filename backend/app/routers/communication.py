@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
-from app.auth import get_current_user
+from app.auth import get_current_user, get_effective_mode
 from app.models.user import User
 from app.state import get_state
 from app.services.communication_orchestrator import communication_orchestrator
@@ -38,12 +38,13 @@ class PreviewCommunicationRequest(BaseModel):
 
 @router.get("")
 async def list_communications(
+    request: Request,
     channel: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user),
 ):
-    state = get_state(current_user.merchant_id)
-    is_real = state.get("active_environment") in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL")
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
     return communication_orchestrator.list_communications(
         merchant_id=current_user.merchant_id,
         channel_filter=channel,
@@ -55,10 +56,11 @@ async def list_communications(
 @router.post("/send")
 async def send_communication(
     req: SendCommunicationRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
 ):
-    state = get_state(current_user.merchant_id)
-    is_demo = state.get("active_environment") == "DEMO"
+    mode = get_effective_mode(request, current_user)
+    is_demo = mode == "demo"
     res = communication_orchestrator.dispatch_communication(
         merchant_id=current_user.merchant_id,
         case_id=req.case_id,
