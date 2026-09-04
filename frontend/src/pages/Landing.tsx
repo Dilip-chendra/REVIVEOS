@@ -233,8 +233,32 @@ export default function Landing({ onEnterDemo }: LandingProps) {
 
           <DynamicHeroText />
 
-          <p style={{ fontSize: "clamp(1rem, 1.8vw, 1.25rem)", color: "#8E9BB0", maxWidth: "800px", lineHeight: 1.6, margin: 0, fontWeight: 400 }}>
-            Enterprises deploy multiple AI agents for cart abandonment, renewals, and dunning. Without a central economic arbiter, they over-contact customers, erode margins with unnecessary discounts, and trigger race conditions. ReviveOS coordinates them all.
+          <p
+            style={{
+              fontSize: "clamp(1.05rem, 1.6vw, 1.25rem)",
+              color: "#94A3B8",
+              maxWidth: "820px",
+              lineHeight: 1.65,
+              margin: 0,
+              fontWeight: 400,
+              textAlign: "center",
+            }}
+          >
+            When payments fail, uncoordinated bots spam customers and give away needless discounts.{" "}
+            <span style={{ color: "#F8FAFC", fontWeight: 600 }}>
+              <span style={{ color: "#FFFFFF" }}>Revive</span>
+              <span
+                style={{
+                  background: "linear-gradient(135deg, #6366F1 0%, #38BDF8 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                OS
+              </span>
+              {" "}is the smart decision brain
+            </span>
+            {" "}that picks the exact right recovery action — protecting your customer experience while recovering lost revenue automatically.
           </p>
 
           {/* ── ARCHITECTURE GUARANTEE STRIP ─────────────────────────── */}
