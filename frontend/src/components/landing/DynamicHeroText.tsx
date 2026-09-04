@@ -177,22 +177,12 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
         }
         @keyframes reviveAmbientPulse {
           0%, 100% {
-            opacity: 0.35;
+            opacity: 0.28;
             transform: scale(0.98);
           }
           50% {
-            opacity: 0.75;
+            opacity: 0.65;
             transform: scale(1.02);
-          }
-        }
-        @keyframes reviveCapsuleGlow {
-          0%, 100% {
-            border-color: rgba(0, 240, 255, 0.32);
-            box-shadow: inset 0 0 14px rgba(0, 240, 255, 0.1), 0 0 20px rgba(0, 240, 255, 0.15);
-          }
-          50% {
-            border-color: rgba(0, 240, 255, 0.55);
-            box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.18), 0 0 32px rgba(0, 240, 255, 0.3);
           }
         }
         .revive-typewriter-cursor {
@@ -201,9 +191,6 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
         .revive-cursor-typing {
           opacity: 1 !important;
           animation: none !important;
-        }
-        .revive-action-capsule {
-          animation: reviveCapsuleGlow 4s ease-in-out infinite;
         }
         .revive-hero-headline {
           font-size: clamp(2.05rem, 4.3vw, 3.8rem);
@@ -214,10 +201,6 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
             font-size: clamp(1.5rem, 5.2vw, 2.25rem) !important;
             line-height: 1.28 !important;
           }
-          .revive-action-capsule {
-            padding: 0.04em 0.32em !important;
-            border-radius: 8px !important;
-          }
         }
         @media (max-width: 520px) {
           .revive-hero-headline {
@@ -227,7 +210,7 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
           .revive-hero-line2 {
             flex-wrap: wrap !important;
             justify-content: center !important;
-            row-gap: 10px !important;
+            row-gap: 8px !important;
           }
         }
       `}</style>
@@ -270,15 +253,14 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
           {staticPrefix}
         </div>
 
-        {/* Line 2: Decision OS + Action Capsule */}
+        {/* Line 2: Decision OS + Natural Seamless Dynamic Word */}
         <div
           className="revive-hero-line2"
           style={{
             display: "inline-flex",
-            alignItems: "center",
+            alignItems: "baseline",
             justifyContent: isLeftAligned ? "flex-start" : "center",
             flexWrap: "nowrap",
-            gap: "0.32em",
             position: "relative",
             width: "auto",
           }}
@@ -289,8 +271,9 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
               color: "#94A3B8",
               fontWeight: 700,
               whiteSpace: "nowrap",
+              marginRight: "0.3em",
               display: "inline-flex",
-              alignItems: "center",
+              alignItems: "baseline",
               gap: "0.24em",
             }}
           >
@@ -306,39 +289,32 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
             <span>decides when to</span>
           </span>
 
-          {/* Dynamic Action Capsule with Zero-CLS Sizer */}
+          {/* Dynamic Action Slot with Zero-CLS Sizer (No Box, seamless page canvas) */}
           <span
-            className="revive-action-capsule"
             style={{
               display: "inline-grid",
               gridTemplateColumns: "1fr",
-              alignItems: "center",
-              justifyItems: "center",
+              alignItems: "baseline",
+              justifyItems: "start",
               position: "relative",
-              verticalAlign: "middle",
-              background: "linear-gradient(135deg, rgba(0, 240, 255, 0.09) 0%, rgba(56, 189, 248, 0.03) 100%)",
-              border: "1px solid rgba(0, 240, 255, 0.35)",
-              borderRadius: "10px",
-              padding: "0.06em 0.44em",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-              boxShadow: "inset 0 0 16px rgba(0, 240, 255, 0.12), 0 0 24px rgba(0, 240, 255, 0.18)",
+              verticalAlign: "baseline",
+              textAlign: "left",
             }}
           >
-            {/* Ambient Cyan Glow behind capsule */}
+            {/* Ambient Cyan Radial Atmosphere */}
             <div
               style={{
                 position: "absolute",
                 inset: "-25%",
-                background: "radial-gradient(ellipse at center, rgba(0, 240, 255, 0.2) 0%, rgba(56, 189, 248, 0.04) 50%, transparent 75%)",
-                filter: "blur(20px)",
+                background: "radial-gradient(ellipse at center, rgba(0, 240, 255, 0.18) 0%, rgba(56, 189, 248, 0.03) 50%, transparent 75%)",
+                filter: "blur(22px)",
                 pointerEvents: "none",
                 zIndex: 0,
                 animation: "reviveAmbientPulse 4s ease-in-out infinite",
               }}
             />
 
-            {/* 1. Sizer Element: Invisible, holds the exact dimensions of the longest word ("Escalate.") to guarantee zero layout shift (CLS = 0.000) */}
+            {/* 1. Sizer Element: Invisible, holds the exact dimensions of the longest word ("Escalate.") plus cursor width to guarantee zero layout shift (CLS = 0.000) */}
             <span
               aria-hidden="true"
               style={{
@@ -350,19 +326,18 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
                 opacity: 0,
                 height: "auto",
                 fontWeight: 800,
-                paddingRight: "8px", // Reserve space for cursor
+                paddingRight: "14px", // Reserve space for 5px cursor + margin
               }}
             >
               {longestPhrase}
             </span>
 
-            {/* 2. Active Animated Word with Radiant Cyber Gradient */}
+            {/* 2. Active Animated Word with Radiant Cyber Gradient + Bold Pipe Cursor */}
             <span
               style={{
                 gridArea: "1 / 1",
                 display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
+                alignItems: "baseline",
                 whiteSpace: "nowrap",
                 zIndex: 1,
               }}
@@ -372,28 +347,28 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
                   background: "linear-gradient(135deg, #00F0FF 0%, #38BDF8 55%, #60A5FA 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
-                  filter: "drop-shadow(0 0 18px rgba(0, 240, 255, 0.5))",
+                  filter: "drop-shadow(0 0 20px rgba(0, 240, 255, 0.48))",
                   fontWeight: 800,
-                  letterSpacing: "-0.01em",
+                  letterSpacing: "-0.015em",
                 }}
               >
                 {displayedText}
               </span>
 
-              {/* Minimal Glowing Accent Cursor */}
+              {/* Bold Photonic Pipe / Vertical Bar Cursor */}
               {!isReducedMotion && (
                 <span
                   className={`revive-typewriter-cursor ${!isPaused ? "revive-cursor-typing" : ""}`}
                   style={{
                     display: "inline-block",
-                    width: "3px",
-                    height: "0.82em",
-                    marginLeft: "4px",
-                    borderRadius: "2px",
-                    background: "#00F0FF",
-                    boxShadow: "0 0 10px #00F0FF, 0 0 20px rgba(0, 240, 255, 0.7)",
+                    width: "5px",
+                    height: "0.92em",
+                    marginLeft: "6px",
+                    borderRadius: "2.5px",
+                    background: "linear-gradient(180deg, #00F0FF 0%, #38BDF8 100%)",
+                    boxShadow: "0 0 8px #00F0FF, 0 0 18px rgba(0, 240, 255, 0.75), 0 0 32px rgba(0, 240, 255, 0.45)",
                     verticalAlign: "baseline",
-                    transform: "translateY(0.04em)",
+                    transform: "translateY(0.06em)",
                     flexShrink: 0,
                   }}
                 />
