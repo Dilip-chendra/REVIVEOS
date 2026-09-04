@@ -68,13 +68,15 @@ export const EnvironmentProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   };
 
-  const isProviderMode = environment === 'RAZORPAY_LIVE';
+  const isProviderMode = environment === 'RAZORPAY_LIVE' || environment === 'RAZORPAY_TEST';
   const isLiveMode = environment === 'RAZORPAY_LIVE';
   const isDemoMode = environment === 'DEMO';
 
   const badgeLabel = isDemoMode
     ? 'DEMO SCENARIOS'
-    : 'RAZORPAY LIVE (REAL DATA)';
+    : environment === 'RAZORPAY_LIVE'
+      ? 'RAZORPAY LIVE (REAL DATA)'
+      : 'RAZORPAY TEST (SANDBOX)';
 
   return (
     <EnvironmentContext.Provider

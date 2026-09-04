@@ -175,13 +175,12 @@ export default function AutonomyCenter() {
   const setAutonomyMode = async (mode: string) => {
     try {
       setUpdating(true);
-      await api.post("/automation/config", { autonomy_mode: mode });
       setStats(prev => ({ ...prev, autonomy_mode: mode }));
       setMessage(`Autonomy posture successfully switched to ${mode}.`);
       setTimeout(() => setMessage(null), 3500);
-      await fetchStatus();
+      await api.post("/automation/config", { autonomy_mode: mode });
     } catch (e) {
-      console.error(e);
+      console.error("Failed to update autonomy posture:", e);
     } finally {
       setUpdating(false);
     }

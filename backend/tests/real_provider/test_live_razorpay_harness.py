@@ -23,7 +23,7 @@ def test_real_razorpay_test_credentials_configured():
 
 def test_real_razorpay_test_ping():
     """Pings Razorpay Test API to verify active authentication."""
-    conn = razorpay_service.test_connection("default")
+    conn = razorpay_service.test_connection("system_sandbox")
     assert conn["success"] is True or conn.get("connected") is True
     assert conn.get("environment") in ("test", "none") or conn.get("status") is not None
 

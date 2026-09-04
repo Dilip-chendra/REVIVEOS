@@ -166,10 +166,11 @@ export default function OpportunityQueue() {
   const { currentMode } = useAppMode();
   const [queueData, setQueueData] = useState<OpportunityItem[]>([]);
   const [totalStats, setTotalStats] = useState({
-    total_count: 0,
-    total_at_risk_inr: 0,
-    total_expected_incremental_inr: 0,
-    total_expected_nic_inr: 0,
+    total_count: 5,
+    total_at_risk_inr: 982398,
+    total_expected_incremental_inr: 609660.59,
+    total_expected_nic_inr: 609520.59,
+    total_recovered_inr: 0,
   });
   const [selectedUrgency, setSelectedUrgency] = useState<string>("ALL");
   const [selectedDecision, setSelectedDecision] = useState<string>("ALL");
@@ -191,8 +192,15 @@ export default function OpportunityQueue() {
         res = { data: { recovered: true, amount_recovered_inr: amount, strategy } };
       }
       const data = res.data || res;
+      const recoveredAmt = data.amount_recovered_inr || amount;
       setExecutedCases(prev => ({ ...prev, [caseId]: data }));
-      setExecutionBanner(`Arbitration Strategy ${strategy} executed for ${caseId}: ₹${(data.amount_recovered_inr || amount).toLocaleString("en-IN")} recovered!`);
+      setTotalStats(prev => ({
+        ...prev,
+        total_at_risk_inr: Math.max(0, prev.total_at_risk_inr - recoveredAmt),
+        total_count: Math.max(0, prev.total_count - 1),
+        total_recovered_inr: prev.total_recovered_inr + recoveredAmt,
+      }));
+      setExecutionBanner(`Arbitration Strategy ${strategy} executed for ${caseId}: ₹${recoveredAmt.toLocaleString("en-IN")} recovered! Top ribbon updated.`);
       setTimeout(() => setExecutionBanner(null), 6000);
       setActiveSimulation(null);
     } catch (e) {
@@ -218,30 +226,33 @@ export default function OpportunityQueue() {
       const res = await api.get(url).then(r => r.data);
       if (res?.queue && res.queue.length > 0) {
         setQueueData(res.queue);
-        setTotalStats({
+        setTotalStats(prev => ({
           total_count: res.total_count || res.queue.length,
           total_at_risk_inr: res.total_at_risk_inr || 1144898,
           total_expected_incremental_inr: res.total_expected_incremental_inr || 609660.59,
           total_expected_nic_inr: res.total_expected_nic_inr || 609520.59,
-        });
+          total_recovered_inr: prev.total_recovered_inr,
+        }));
       } else {
         setQueueData(DEFAULT_QUEUE_DATA);
-        setTotalStats({
+        setTotalStats(prev => ({
           total_count: 5,
           total_at_risk_inr: 982398,
           total_expected_incremental_inr: 609660.59,
           total_expected_nic_inr: 609520.59,
-        });
+          total_recovered_inr: prev.total_recovered_inr,
+        }));
       }
     } catch (e) {
       console.warn("Using default opportunity queue for demo:", e);
       setQueueData(DEFAULT_QUEUE_DATA);
-      setTotalStats({
+      setTotalStats(prev => ({
         total_count: 5,
         total_at_risk_inr: 982398,
         total_expected_incremental_inr: 609660.59,
         total_expected_nic_inr: 609520.59,
-      });
+        total_recovered_inr: prev.total_recovered_inr,
+      }));
     } finally {
       setLoading(false);
     }
@@ -493,6 +504,14 @@ export default function OpportunityQueue() {
           <div style={{ fontSize: 11, color: "#6EE7B7", textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Net Incremental Contribution (NIC)</div>
           <div style={{ fontSize: 24, fontWeight: 800, color: "#34D399" }}>₹{totalStats.total_expected_nic_inr.toLocaleString("en-IN")}</div>
           <div style={{ fontSize: 11, color: "#A7F3D0", marginTop: 4 }}>Pure profit after API, discount & attention costs</div>
+        </div>
+
+        <div style={{ background: totalStats.total_recovered_inr > 0 ? "linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(15, 23, 42, 0.8) 100%)" : "linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%)", border: `1px solid ${totalStats.total_recovered_inr > 0 ? "rgba(16, 185, 129, 0.5)" : "rgba(148, 163, 184, 0.15)"}`, borderRadius: 10, padding: "16px 20px" }}>
+          <div style={{ fontSize: 11, color: totalStats.total_recovered_inr > 0 ? "#6EE7B7" : "#94A3B8", textTransform: "uppercase", fontWeight: 600, marginBottom: 4 }}>Revenue Recovered (Live)</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: totalStats.total_recovered_inr > 0 ? "#10B981" : "#F8FAFC" }}>₹{totalStats.total_recovered_inr.toLocaleString("en-IN")}</div>
+          <div style={{ fontSize: 11, color: totalStats.total_recovered_inr > 0 ? "#34D399" : "#64748B", marginTop: 4, fontWeight: 600 }}>
+            {Object.keys(executedCases).length} Opportunities Recovered Inline
+          </div>
         </div>
       </div>
 

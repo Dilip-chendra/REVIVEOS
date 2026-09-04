@@ -233,17 +233,16 @@ class CommunicationOrchestrator:
             }
 
         # 3. Attention Budget Check (24h fatigue rule)
-        if not is_demo:
-            allowed, budget_msg = self.check_attention_budget(merchant_id, customer_id, max_contacts_24h=1)
-            if not allowed:
-                logger.warning(f"Attention budget blocked for {customer_id}: {budget_msg}")
-                return {
-                    "success": False,
-                    "status": "BLOCKED_ATTENTION_BUDGET",
-                    "reason": budget_msg,
-                    "error": budget_msg,
-                    "record": None,
-                }
+        allowed, budget_msg = self.check_attention_budget(merchant_id, customer_id, max_contacts_24h=1)
+        if not allowed:
+            logger.warning(f"Attention budget blocked for {customer_id}: {budget_msg}")
+            return {
+                "success": False,
+                "status": "BLOCKED_ATTENTION_BUDGET",
+                "reason": budget_msg,
+                "error": budget_msg,
+                "record": None,
+            }
 
         # 4. Action Contract Verification (if provided)
         contract_hash = None

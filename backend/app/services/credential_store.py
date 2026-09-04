@@ -151,21 +151,21 @@ class CredentialStore:
         key = f"{merchant_id}:{provider}"
         record = self._store.get(key)
         
-        # Fallback to system config if no merchant-specific record is registered
-        if record is None and provider == "razorpay" and settings.razorpay_configured:
-            return {
-                "connection_id": f"conn_system_{merchant_id[:8]}",
-                "merchant_id": merchant_id,
-                "provider": "razorpay",
-                "environment": settings.detected_razorpay_environment,
-                "key_id": settings.razorpay_key_id.strip(),
-                "key_secret": settings.razorpay_key_secret.strip(),
-                "webhook_secret": (settings.razorpay_webhook_secret or settings.razorpay_key_secret).strip(),
-                "is_configured": True,
-                "has_webhook_secret": bool(settings.razorpay_webhook_secret),
-            }
-
         if not record:
+            # Only explicit system sandbox uses platform environment fallback
+            if merchant_id == "system_sandbox" and provider == "razorpay" and settings.razorpay_configured:
+                return {
+                    "connection_id": f"conn_system_{merchant_id[:8]}",
+                    "merchant_id": merchant_id,
+                    "provider": "razorpay",
+                    "environment": settings.detected_razorpay_environment,
+                    "key_id": settings.razorpay_key_id.strip(),
+                    "key_secret": settings.razorpay_key_secret.strip(),
+                    "webhook_secret": (settings.razorpay_webhook_secret or settings.razorpay_key_secret).strip(),
+                    "is_configured": True,
+                    "has_webhook_secret": bool(settings.razorpay_webhook_secret),
+                }
+
             return {
                 "connection_id": "",
                 "merchant_id": merchant_id,

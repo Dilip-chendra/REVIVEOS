@@ -44,11 +44,16 @@ async def update_automation_config(
     req: UpdateAutonomyConfigRequest,
     current_user: User = Depends(get_current_user),
 ):
+    from dataclasses import asdict
     res = intervention_scheduler.update_config(
         merchant_id=current_user.merchant_id,
         new_config=req.model_dump(exclude_unset=True),
     )
-    return res
+    return {
+        "success": True,
+        "config": asdict(res) if hasattr(res, "__dataclass_fields__") else res,
+        "autonomy_mode": getattr(res, "autonomy_mode", "ASSISTED"),
+    }
 
 
 @router.get("/scheduled")

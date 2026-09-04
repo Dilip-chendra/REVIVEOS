@@ -89,15 +89,6 @@ async def connect_razorpay(req: ConnectRequest, current_user: User = Depends(get
         webhook_secret=final_wh,
         environment=env_str,
     )
-    if merchant_id != "default":
-        credential_store.save_credentials(
-            merchant_id="default",
-            provider="razorpay",
-            key_id=final_key,
-            key_secret=final_secret,
-            webhook_secret=final_wh,
-            environment=env_str,
-        )
 
     # 4. Test the connection immediately with active API ping
     test_res = razorpay_service.test_connection(merchant_id)
@@ -107,16 +98,16 @@ async def connect_razorpay(req: ConnectRequest, current_user: User = Depends(get
         # 5. Auto-switch to corresponding provider environment
         target_env = "RAZORPAY_LIVE" if test_res["environment"] == "live" else "RAZORPAY_TEST"
         set_active_environment(merchant_id, target_env)
-        if merchant_id != "default":
-            set_active_environment("default", target_env)
 
         # 6. Automatically trigger fresh synchronization
         try:
             sync_res = sync_service.sync_now(merchant_id, max_records=100)
-            if merchant_id != "default":
-                sync_service.sync_now("default", max_records=100)
         except Exception as e:
             sync_res = {"success": False, "error": str(e)}
+    else:
+        # Revert credentials if authentication failed so merchant is not left in broken state
+        credential_store.clear_credentials(merchant_id, "razorpay")
+        masked = credential_store.get_masked_credentials(merchant_id, "razorpay")
 
     response = {
         "success": test_res["success"],
@@ -237,8 +228,6 @@ async def switch_environment(req: EnvironmentSwitchRequest, current_user: User =
     """
     merchant_id = current_user.merchant_id
     state = set_active_environment(merchant_id, req.environment)
-    if merchant_id != "default":
-        set_active_environment("default", req.environment)
     return {
         "success": True,
         "active_environment": state["active_environment"],
@@ -254,8 +243,6 @@ async def get_status(current_user: User = Depends(get_current_user)):
     """
     merchant_id = current_user.merchant_id
     masked = credential_store.get_masked_credentials(merchant_id, "razorpay")
-    if not masked.get("is_configured") and merchant_id != "default":
-        masked = credential_store.get_masked_credentials("default", "razorpay")
 
     state = get_state(merchant_id)
     history = sync_service.get_history(merchant_id)
@@ -350,8 +337,6 @@ async def run_integration_test(current_user: User = Depends(get_current_user)):
 
     # Step 1: Credential format check
     masked = credential_store.get_masked_credentials(merchant_id, "razorpay")
-    if not masked.get("is_configured") and merchant_id != "default":
-        masked = credential_store.get_masked_credentials("default", "razorpay")
 
     s1 = add_step(
         1, "Credential format",
@@ -491,10 +476,6 @@ async def disconnect_razorpay(current_user: User = Depends(get_current_user)):
     razorpay_service.clear_client(merchant_id)
     credential_store.clear_credentials(merchant_id, "razorpay")
     set_active_environment(merchant_id, "DEMO")
-    if merchant_id != "default":
-        razorpay_service.clear_client("default")
-        credential_store.clear_credentials("default", "razorpay")
-        set_active_environment("default", "DEMO")
     return {
         "success": True,
         "message": "Disconnected from Razorpay. Switched to DEMO mode.",

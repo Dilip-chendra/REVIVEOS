@@ -91,10 +91,12 @@ export default function RiskView() {
   const categories = ["all", ...Array.from(new Set(opportunities.map(o => o.failure_category).filter(Boolean)))];
   const filtered = filter === "all" ? opportunities : opportunities.filter(o => o.failure_category === filter);
 
-  const totalAtRisk = opportunities.reduce((s, c) => s + (c.amount_inr || 0), 0);
-  const totalRecoverable = opportunities.reduce((s, c) => s + (c.expected_recovery_value_inr || 0), 0);
-  const avgProb = opportunities.length
-    ? opportunities.reduce((s, c) => s + (c.recovery_probability || 0), 0) / opportunities.length
+  const totalAtRisk = opportunities.filter(c => c.status !== "recovered").reduce((s, c) => s + (c.amount_inr || 0), 0);
+  const totalRecovered = opportunities.filter(c => c.status === "recovered").reduce((s, c) => s + (c.amount_inr || 0), 0);
+  const totalRecoverable = opportunities.filter(c => c.status !== "recovered").reduce((s, c) => s + (c.expected_recovery_value_inr || 0), 0);
+  const activeOpportunities = opportunities.filter(c => c.status !== "recovered");
+  const avgProb = activeOpportunities.length
+    ? activeOpportunities.reduce((s, c) => s + (c.recovery_probability || 0), 0) / activeOpportunities.length
     : 0;
 
   if (loading) return (
@@ -126,13 +128,14 @@ export default function RiskView() {
 
       {/* ── KPI Strip ── */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-        className="grid-responsive-3">
+        style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px" }}>
         {[
           { label: "Total at Risk", value: fmt(totalAtRisk), color: "#ef4444" },
-          { label: "Recoverable Value", value: fmt(totalRecoverable), color: "#10b981" },
+          { label: "Total Recovered", value: fmt(totalRecovered), color: "#10b981", highlight: totalRecovered > 0 },
+          { label: "Recoverable Value", value: fmt(totalRecoverable), color: "#38bdf8" },
           { label: "Avg Recovery Prob", value: `${(avgProb * 100).toFixed(1)}%`, color: "var(--text-primary)" },
         ].map(k => (
-          <div key={k.label} style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", padding: "16px 20px" }}>
+          <div key={k.label} style={{ background: (k as any).highlight ? "rgba(16, 185, 129, 0.08)" : "var(--bg-elevated)", border: `1px solid ${(k as any).highlight ? "rgba(16, 185, 129, 0.3)" : "var(--border)"}`, borderRadius: "var(--r-lg)", padding: "16px 20px" }}>
             <div style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>{k.label}</div>
             <div className="metric-value-responsive" style={{ color: k.color }}>{k.value}</div>
           </div>

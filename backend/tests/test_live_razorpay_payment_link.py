@@ -7,13 +7,25 @@ from app.models.user import User
 
 @pytest.fixture
 def override_auth():
+    from app.config import get_settings
+    from app.services.credential_store import credential_store
+    settings = get_settings()
     test_user = User(
         id="usr_test_evaluator_01",
         clerk_user_id="clerk_test_01",
         email="evaluator@razorpay.com",
         name="Razorpay Judge Evaluator",
-        merchant_id="default",
+        merchant_id="test_evaluator_m",
     )
+    if settings.razorpay_configured:
+        credential_store.save_credentials(
+            merchant_id="test_evaluator_m",
+            provider="razorpay",
+            key_id=settings.razorpay_key_id.strip(),
+            key_secret=settings.razorpay_key_secret.strip(),
+            webhook_secret=settings.razorpay_webhook_secret.strip() if settings.razorpay_webhook_secret else "",
+            environment="test",
+        )
     app.dependency_overrides[get_current_user] = lambda: test_user
     yield
     app.dependency_overrides.clear()
