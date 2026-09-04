@@ -185,12 +185,23 @@ async def generate_copilot_message(req: CopilotRequest, current_user: User = Dep
 
 
 @router.get("/promise-to-pay")
-async def list_promises(current_user: User = Depends(get_current_user)):
-    return promise_to_pay_manager.list_promises()
+async def list_promises(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
+    return promise_to_pay_manager.list_promises(is_real_mode=is_real)
 
 
 @router.post("/promise-to-pay")
-async def create_promise(req: CreatePromiseRequest, current_user: User = Depends(get_current_user)):
+async def create_promise(
+    req: CreatePromiseRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    mode = get_effective_mode(request, current_user)
+    is_real = mode == "real"
     return promise_to_pay_manager.create_promise(
         case_id=req.case_id,
         customer_name=req.customer_name,
@@ -198,6 +209,7 @@ async def create_promise(req: CreatePromiseRequest, current_user: User = Depends
         promise_date=req.promise_date,
         confidence=req.confidence,
         notes=req.notes,
+        is_real_mode=is_real,
     )
 
 

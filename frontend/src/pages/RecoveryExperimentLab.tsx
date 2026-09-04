@@ -12,7 +12,11 @@ import {
   RefreshCw,
   Scale,
   CalendarCheck,
+  Zap,
+  Plus,
+  X,
 } from 'lucide-react';
+import LiveRazorpayLinkModal from '../components/LiveRazorpayLinkModal';
 
 interface ExperimentMetrics {
   experiment_id: string;
@@ -60,8 +64,19 @@ export default function RecoveryExperimentLab() {
   const [copilotDraft, setCopilotDraft] = useState<any>(null);
   const [generatingDraft, setGeneratingDraft] = useState(false);
 
-  // Promise-to-Pay state
+  // Live Razorpay Modal state
+  const [showLiveModal, setShowLiveModal] = useState<boolean>(false);
+  const [liveModalAmount, setLiveModalAmount] = useState<number>(2499);
+  const [liveModalCustomer, setLiveModalCustomer] = useState<string>('Valued Customer');
+
+  // Promise-to-Pay state & form
   const [promises, setPromises] = useState<any[]>([]);
+  const [showAddPromise, setShowAddPromise] = useState<boolean>(false);
+  const [newPromiseCustomer, setNewPromiseCustomer] = useState<string>(isDemoMode ? 'Enterprise Client' : 'Customer 1042');
+  const [newPromiseAmount, setNewPromiseAmount] = useState<number>(2499);
+  const [newPromiseDate, setNewPromiseDate] = useState<string>('2026-09-10');
+  const [newPromiseNotes, setNewPromiseNotes] = useState<string>('Customer requested salary-credit date alignment.');
+  const [savingPromise, setSavingPromise] = useState<boolean>(false);
 
   // Forecast state
   const [forecast, setForecast] = useState<any>(null);
@@ -90,7 +105,16 @@ export default function RecoveryExperimentLab() {
 
   useEffect(() => {
     fetchExperimentData();
-  }, [currentMode]);
+    if (isDemoMode) {
+      setCopilotCustomer('Nexus Retail Corp');
+      setCopilotAmount(48500);
+      setNewPromiseCustomer('Enterprise Client');
+    } else {
+      setCopilotCustomer('Valued Customer');
+      setCopilotAmount(2499);
+      setNewPromiseCustomer('Customer 1042');
+    }
+  }, [currentMode, isDemoMode]);
 
   const handleRunNewExperiment = async () => {
     setRunning(true);
@@ -149,6 +173,29 @@ export default function RecoveryExperimentLab() {
     }
   };
 
+  const handleCreatePromise = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPromiseCustomer.trim()) return;
+    setSavingPromise(true);
+    try {
+      const res = await api.post('/promise-to-pay', {
+        case_id: isDemoMode ? 'P2P-DEMO' : 'P2P-LIVE',
+        customer_name: newPromiseCustomer,
+        amount_inr: Number(newPromiseAmount),
+        promise_date: newPromiseDate,
+        confidence: 0.90,
+        notes: newPromiseNotes || 'Customer scheduled deferred payment.',
+      });
+      setPromises((prev) => [res.data, ...prev]);
+      setShowAddPromise(false);
+      setNewPromiseNotes('');
+    } catch (err) {
+      console.error('Failed to create promise:', err);
+    } finally {
+      setSavingPromise(false);
+    }
+  };
+
   const formatINR = (val?: number) => {
     if (val === undefined || val === null) return '₹0';
     return '₹' + Math.round(val).toLocaleString('en-IN');
@@ -156,6 +203,14 @@ export default function RecoveryExperimentLab() {
 
   return (
     <div style={{ padding: '24px 32px', maxWidth: 1440, margin: '0 auto', color: '#F1F5F9' }}>
+      {/* Live Payment Link Modal */}
+      <LiveRazorpayLinkModal
+        isOpen={showLiveModal}
+        onClose={() => setShowLiveModal(false)}
+        defaultAmount={liveModalAmount}
+        customerName={liveModalCustomer}
+      />
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>
@@ -548,10 +603,35 @@ export default function RecoveryExperimentLab() {
                   <div style={{ color: '#CBD5E1', lineHeight: 1.4, marginBottom: 8 }}>
                     {copilotDraft.message}
                   </div>
-                  <div style={{ display: 'flex', gap: 8, fontSize: '0.7rem', color: '#34D399' }}>
+                  <div style={{ display: 'flex', gap: 8, fontSize: '0.7rem', color: '#34D399', flexWrap: 'wrap' }}>
                     <span>✓ Customer Sovereignty Verified</span>
                     <span>✓ No Coercive Language</span>
                     <span>✓ Verified Payment Link</span>
+                  </div>
+                  <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => {
+                        setLiveModalCustomer(copilotCustomer);
+                        setLiveModalAmount(copilotAmount);
+                        setShowLiveModal(true);
+                      }}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: 6,
+                        background: 'rgba(0, 240, 255, 0.15)',
+                        border: '1px solid #00F0FF',
+                        color: '#00F0FF',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      <Zap size={12} />
+                      <span>⚡ Test on Live Razorpay Link</span>
+                    </button>
                   </div>
                 </>
               ) : (
@@ -565,58 +645,161 @@ export default function RecoveryExperimentLab() {
 
         {/* Promise-to-Pay Workflow */}
         <div style={{ background: '#0F172A', borderRadius: 12, border: '1px solid #1E293B', padding: '20px' }}>
-          <h3 style={{ margin: '0 0 14px 0', fontSize: '0.98rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CalendarCheck size={16} color="#34D399" />
-            Promise-to-Pay (P2P) Tracking & Restraint
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CalendarCheck size={16} color="#34D399" />
+              Promise-to-Pay (P2P) Tracking & Restraint
+            </h3>
+            <button
+              onClick={() => setShowAddPromise(!showAddPromise)}
+              style={{
+                padding: '4px 10px',
+                borderRadius: 6,
+                background: showAddPromise ? 'rgba(239,68,68,0.15)' : 'rgba(52,211,153,0.15)',
+                border: `1px solid ${showAddPromise ? 'rgba(239,68,68,0.3)' : 'rgba(52,211,153,0.3)'}`,
+                color: showAddPromise ? '#F87171' : '#34D399',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              {showAddPromise ? <X size={12} /> : <Plus size={12} />}
+              {showAddPromise ? 'Cancel' : '+ Log Promise'}
+            </button>
+          </div>
           <p style={{ margin: '0 0 14px 0', fontSize: '0.8rem', color: '#94A3B8' }}>
             When a customer commits to pay, ReviveOS freezes automated outreach until the promised date.
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {promises.map((p) => (
-              <div key={p.id} style={{ background: '#0B1222', padding: '12px 14px', borderRadius: 8, border: '1px solid #1E293B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {showAddPromise && (
+            <form onSubmit={handleCreatePromise} style={{ background: '#0B1222', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 8, padding: 12, marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#34D399' }}>Record Customer Promise to Pay</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <div>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#F1F5F9' }}>
-                    {p.customer_name} — {formatINR(p.amount_inr)}
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: '#94A3B8', marginTop: 2 }}>
-                    Promised Date: <strong>{p.promise_date}</strong> (Confidence: {Math.round(p.confidence * 100)}%)
-                  </div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748B', marginTop: 2 }}>{p.notes}</div>
+                  <label style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block', marginBottom: 2 }}>Customer</label>
+                  <input
+                    type="text"
+                    value={newPromiseCustomer}
+                    onChange={(e) => setNewPromiseCustomer(e.target.value)}
+                    style={{ width: '100%', background: '#0F172A', border: '1px solid #1E293B', color: '#FFF', padding: '4px 8px', borderRadius: 4, fontSize: '0.75rem' }}
+                    required
+                  />
                 </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    padding: '3px 8px',
-                    borderRadius: 6,
-                    background: p.status === 'FULFILLED' ? 'rgba(16,185,129,0.15)' : p.status === 'MISSED' ? 'rgba(239,68,68,0.15)' : 'rgba(59,130,246,0.15)',
-                    color: p.status === 'FULFILLED' ? '#34D399' : p.status === 'MISSED' ? '#F87171' : '#60A5FA',
-                  }}>
-                    {p.status}
-                  </span>
-
-                  {p.status === 'PROMISED' && (
-                    <>
-                      <button
-                        onClick={() => handleFulfillPromise(p.id)}
-                        style={{ padding: '4px 8px', borderRadius: 4, background: 'rgba(16,185,129,0.2)', color: '#34D399', border: '1px solid rgba(16,185,129,0.4)', fontSize: '0.7rem', cursor: 'pointer' }}
-                      >
-                        Fulfill
-                      </button>
-                      <button
-                        onClick={() => handleMissPromise(p.id)}
-                        style={{ padding: '4px 8px', borderRadius: 4, background: 'rgba(239,68,68,0.2)', color: '#F87171', border: '1px solid rgba(239,68,68,0.4)', fontSize: '0.7rem', cursor: 'pointer' }}
-                      >
-                        Miss
-                      </button>
-                    </>
-                  )}
+                <div>
+                  <label style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block', marginBottom: 2 }}>Amount (₹ INR)</label>
+                  <input
+                    type="number"
+                    value={newPromiseAmount}
+                    onChange={(e) => setNewPromiseAmount(Number(e.target.value))}
+                    style={{ width: '100%', background: '#0F172A', border: '1px solid #1E293B', color: '#FFF', padding: '4px 8px', borderRadius: 4, fontSize: '0.75rem' }}
+                    required
+                  />
                 </div>
               </div>
-            ))}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <label style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block', marginBottom: 2 }}>Promised Date</label>
+                  <input
+                    type="date"
+                    value={newPromiseDate}
+                    onChange={(e) => setNewPromiseDate(e.target.value)}
+                    style={{ width: '100%', background: '#0F172A', border: '1px solid #1E293B', color: '#FFF', padding: '4px 8px', borderRadius: 4, fontSize: '0.75rem' }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.7rem', color: '#94A3B8', display: 'block', marginBottom: 2 }}>Notes</label>
+                  <input
+                    type="text"
+                    value={newPromiseNotes}
+                    onChange={(e) => setNewPromiseNotes(e.target.value)}
+                    placeholder="e.g. Salary credit alignment"
+                    style={{ width: '100%', background: '#0F172A', border: '1px solid #1E293B', color: '#FFF', padding: '4px 8px', borderRadius: 4, fontSize: '0.75rem' }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="submit"
+                  disabled={savingPromise}
+                  style={{
+                    padding: '4px 12px',
+                    borderRadius: 4,
+                    background: '#10B981',
+                    color: '#040711',
+                    border: 'none',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {savingPromise ? 'Saving...' : 'Commit Promise & Freeze Outreach'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {promises.length === 0 ? (
+              <div style={{ padding: '24px 16px', textAlign: 'center', color: '#64748B', background: '#0B1222', borderRadius: 8, border: '1px solid #1E293B', fontSize: '0.8rem' }}>
+                <CalendarCheck size={28} color="#34D399" style={{ margin: '0 auto 8px', opacity: 0.7 }} />
+                <div style={{ color: '#E2E8F0', fontWeight: 600, marginBottom: 4 }}>
+                  {isDemoMode ? "No Active Promises" : "No Active Customer Promises"}
+                </div>
+                <div style={{ fontSize: '0.74rem', maxWidth: '380px', margin: '0 auto', lineHeight: 1.4 }}>
+                  {isDemoMode 
+                    ? "Reset demo scenarios to reload synthetic customer commitments."
+                    : "When live customers commit to a future payment date, automated recovery outreach is held in reserve here to prevent friction."}
+                </div>
+              </div>
+            ) : (
+              promises.map((p) => (
+                <div key={p.id} style={{ background: '#0B1222', padding: '12px 14px', borderRadius: 8, border: '1px solid #1E293B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#F1F5F9' }}>
+                      {p.customer_name} — {formatINR(p.amount_inr)}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#94A3B8', marginTop: 2 }}>
+                      Promised Date: <strong>{p.promise_date}</strong> (Confidence: {Math.round(p.confidence * 100)}%)
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#64748B', marginTop: 2 }}>{p.notes}</div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      background: p.status === 'FULFILLED' ? 'rgba(16,185,129,0.15)' : p.status === 'MISSED' ? 'rgba(239,68,68,0.15)' : 'rgba(59,130,246,0.15)',
+                      color: p.status === 'FULFILLED' ? '#34D399' : p.status === 'MISSED' ? '#F87171' : '#60A5FA',
+                    }}>
+                      {p.status}
+                    </span>
+
+                    {p.status === 'PROMISED' && (
+                      <>
+                        <button
+                          onClick={() => handleFulfillPromise(p.id)}
+                          style={{ padding: '4px 8px', borderRadius: 4, background: 'rgba(16,185,129,0.2)', color: '#34D399', border: '1px solid rgba(16,185,129,0.4)', fontSize: '0.7rem', cursor: 'pointer' }}
+                        >
+                          Fulfill
+                        </button>
+                        <button
+                          onClick={() => handleMissPromise(p.id)}
+                          style={{ padding: '4px 8px', borderRadius: 4, background: 'rgba(239,68,68,0.2)', color: '#F87171', border: '1px solid rgba(239,68,68,0.4)', fontSize: '0.7rem', cursor: 'pointer' }}
+                        >
+                          Miss
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -629,23 +812,35 @@ export default function RecoveryExperimentLab() {
             Revenue at Risk Decay Curve & 30-Day Recovery Forecast
           </h3>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
-            {[
-              { label: 'Today (Immediate)', amt: forecast.today_inr, color: '#38BDF8' },
-              { label: 'Next 24 Hours', amt: forecast.h24_inr, color: '#60A5FA' },
-              { label: 'Next 72 Hours', amt: forecast.h72_inr, color: '#818CF8' },
-              { label: '7-Day Horizon', amt: forecast.d7_inr, color: '#A78BFA' },
-              { label: '30-Day Horizon', amt: forecast.d30_inr, color: '#C084FC' },
-            ].map((f, i) => (
-              <div key={i} style={{ background: '#0B1222', padding: '14px', borderRadius: 8, border: '1px solid #1E293B' }}>
-                <div style={{ fontSize: '0.74rem', color: '#94A3B8', fontWeight: 600 }}>{f.label}</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: f.color, marginTop: 4 }}>
-                  {formatINR(f.amt)}
-                </div>
-                <div style={{ fontSize: '0.7rem', color: '#64748B', marginTop: 4 }}>Decay-adjusted value</div>
+          {forecast.today_inr === 0 && !isDemoMode ? (
+            <div style={{ padding: '24px', background: '#0B1222', borderRadius: 8, border: '1px solid #1E293B', textAlign: 'center' }}>
+              <CheckCircle2 size={24} color="#10B981" style={{ margin: '0 auto 8px', opacity: 0.8 }} />
+              <div style={{ color: '#F8FAFC', fontWeight: 700, fontSize: '0.9rem', marginBottom: 4 }}>
+                All Systems Nominal • Zero Live Revenue At Risk
               </div>
-            ))}
-          </div>
+              <div style={{ fontSize: '0.75rem', color: '#94A3B8', maxWidth: '440px', margin: '0 auto', lineHeight: 1.5 }}>
+                Connected to live Razorpay telemetry. No outstanding failed transactions or uncollected invoices detected. Decay curves will project dynamically upon new payment failures.
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
+              {[
+                { label: 'Today (Immediate)', amt: forecast.today_inr, color: '#38BDF8' },
+                { label: 'Next 24 Hours', amt: forecast.h24_inr, color: '#60A5FA' },
+                { label: 'Next 72 Hours', amt: forecast.h72_inr, color: '#818CF8' },
+                { label: '7-Day Horizon', amt: forecast.d7_inr, color: '#A78BFA' },
+                { label: '30-Day Horizon', amt: forecast.d30_inr, color: '#C084FC' },
+              ].map((f, i) => (
+                <div key={i} style={{ background: '#0B1222', padding: '14px', borderRadius: 8, border: '1px solid #1E293B' }}>
+                  <div style={{ fontSize: '0.74rem', color: '#94A3B8', fontWeight: 600 }}>{f.label}</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: f.color, marginTop: 4 }}>
+                    {formatINR(f.amt)}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#64748B', marginTop: 4 }}>Decay-adjusted value</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

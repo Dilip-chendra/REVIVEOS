@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 
 class PromiseToPayManager:
     def __init__(self):
-        self._promises: Dict[str, Dict[str, Any]] = {
+        self._demo_promises: Dict[str, Dict[str, Any]] = {
             "P2P-101": {
                 "id": "P2P-101",
                 "case_id": "OPP-002",
@@ -28,6 +28,7 @@ class PromiseToPayManager:
                 "status": "PROMISED",
                 "created_at": "2026-09-01T10:00:00Z",
                 "notes": "Customer requested salary-credit date alignment.",
+                "data_universe": "DEMO",
             },
             "P2P-102": {
                 "id": "P2P-102",
@@ -39,11 +40,15 @@ class PromiseToPayManager:
                 "status": "PROMISED",
                 "created_at": "2026-09-02T14:30:00Z",
                 "notes": "Director approved NEFT transfer.",
+                "data_universe": "DEMO",
             },
         }
+        self._real_promises: Dict[str, Dict[str, Any]] = {}
 
-    def list_promises(self) -> List[Dict[str, Any]]:
-        return list(self._promises.values())
+    def list_promises(self, is_real_mode: bool = False) -> List[Dict[str, Any]]:
+        if is_real_mode:
+            return list(self._real_promises.values())
+        return list(self._demo_promises.values())
 
     def create_promise(
         self,
@@ -53,6 +58,7 @@ class PromiseToPayManager:
         promise_date: str,
         confidence: float = 0.85,
         notes: str = "",
+        is_real_mode: bool = False,
     ) -> Dict[str, Any]:
         p2p_id = f"P2P-{uuid.uuid4().hex[:6].upper()}"
         record = {
@@ -65,22 +71,28 @@ class PromiseToPayManager:
             "status": "PROMISED",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "notes": notes,
+            "data_universe": "REAL" if is_real_mode else "DEMO",
         }
-        self._promises[p2p_id] = record
+        if is_real_mode:
+            self._real_promises[p2p_id] = record
+        else:
+            self._demo_promises[p2p_id] = record
         return record
 
     def fulfill_promise(self, promise_id: str) -> Optional[Dict[str, Any]]:
-        if promise_id in self._promises:
-            self._promises[promise_id]["status"] = "FULFILLED"
-            self._promises[promise_id]["resolved_at"] = datetime.now(timezone.utc).isoformat()
-            return self._promises[promise_id]
+        target_dict = self._real_promises if promise_id in self._real_promises else self._demo_promises
+        if promise_id in target_dict:
+            target_dict[promise_id]["status"] = "FULFILLED"
+            target_dict[promise_id]["resolved_at"] = datetime.now(timezone.utc).isoformat()
+            return target_dict[promise_id]
         return None
 
     def miss_promise(self, promise_id: str) -> Optional[Dict[str, Any]]:
-        if promise_id in self._promises:
-            self._promises[promise_id]["status"] = "MISSED"
-            self._promises[promise_id]["resolved_at"] = datetime.now(timezone.utc).isoformat()
-            return self._promises[promise_id]
+        target_dict = self._real_promises if promise_id in self._real_promises else self._demo_promises
+        if promise_id in target_dict:
+            target_dict[promise_id]["status"] = "MISSED"
+            target_dict[promise_id]["resolved_at"] = datetime.now(timezone.utc).isoformat()
+            return target_dict[promise_id]
         return None
 
 
