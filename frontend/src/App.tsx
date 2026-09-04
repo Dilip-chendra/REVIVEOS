@@ -716,15 +716,17 @@ function AuthenticatedApp({ onExitDemo }: { onExitDemo?: () => void }) {
 
 export default function App() {
   const [hasEnteredWorkspace, setHasEnteredWorkspace] = useState<boolean>(() => {
+    // Public visitors must ALWAYS see the Landing page.
+    // Never enter workspace automatically based on persistent theme/mode preferences.
+    if (typeof window === "undefined") return false;
     return (
-      localStorage.getItem("revive_session_active") === "true" ||
-      localStorage.getItem("revive_demo_mode") === "true" ||
-      localStorage.getItem("revive_app_mode") === "real" ||
-      localStorage.getItem("revive_app_mode") === "demo"
+      sessionStorage.getItem("revive_demo_active") === "true" ||
+      localStorage.getItem("revive_session_active") === "true"
     );
   });
 
   const handleEnterWorkspace = () => {
+    sessionStorage.setItem("revive_demo_active", "true");
     localStorage.setItem("revive_session_active", "true");
     localStorage.setItem("revive_demo_mode", "true");
     localStorage.setItem("revive_onboarded", "true");
@@ -732,6 +734,7 @@ export default function App() {
   };
 
   const handleExitWorkspace = () => {
+    sessionStorage.removeItem("revive_demo_active");
     localStorage.removeItem("revive_session_active");
     localStorage.removeItem("revive_demo_mode");
     localStorage.removeItem("revive_onboarded");

@@ -176,11 +176,11 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
         }
         @keyframes reviveAmbientPulse {
           0%, 100% {
-            opacity: 0.35;
+            opacity: 0.3;
             transform: scale(0.98);
           }
           50% {
-            opacity: 0.75;
+            opacity: 0.65;
             transform: scale(1.02);
           }
         }
@@ -190,6 +190,16 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
         .revive-cursor-typing {
           opacity: 1 !important;
           animation: none !important;
+        }
+        @media (max-width: 640px) {
+          .revive-hero-headline {
+            font-size: clamp(1.75rem, 6.8vw, 2.5rem) !important;
+            line-height: 1.32 !important;
+          }
+          .revive-hero-line2 {
+            flex-wrap: wrap !important;
+            row-gap: 6px !important;
+          }
         }
       `}</style>
 
@@ -205,13 +215,14 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
       {/* Visual Animated Headline */}
       <div
         aria-hidden="true"
+        className="revive-hero-headline"
         style={{
-          fontFamily: "var(--font-display, var(--font-hero-display, sans-serif))",
-          fontSize: "clamp(2.35rem, 5.4vw, 4.4rem)",
-          fontWeight: 900,
-          lineHeight: 1.08,
-          letterSpacing: "-0.035em",
-          maxWidth: "1040px",
+          fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          fontSize: "clamp(2.25rem, 4.8vw, 4.0rem)",
+          fontWeight: 800,
+          lineHeight: 1.22,
+          letterSpacing: "-0.02em",
+          maxWidth: "1100px",
           margin: 0,
           display: "flex",
           flexDirection: "column",
@@ -220,34 +231,35 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
         }}
       >
         {/* Line 1: Primary Punchline */}
-        <span
+        <div
           style={{
-            color: "#EEF1F8",
+            color: "#FFFFFF",
             display: "block",
             whiteSpace: "nowrap",
+            marginBottom: "0.15em",
           }}
         >
           {staticPrefix}
-        </span>
+        </div>
 
         {/* Line 2: Prefix + Stable Dynamic Slot */}
-        <span
+        <div
+          className="revive-hero-line2"
           style={{
             display: "inline-flex",
             alignItems: "baseline",
             justifyContent: "center",
-            flexWrap: "wrap",
-            rowGap: "4px",
-            marginTop: "6px",
+            flexWrap: "nowrap",
             position: "relative",
           }}
         >
           {/* Static Sub-prefix ("Preserve ") */}
           <span
             style={{
-              color: "#8E9BB0",
-              marginRight: "0.26em",
-              fontWeight: 800,
+              color: "#94A3B8",
+              marginRight: "0.32em",
+              fontWeight: 700,
+              whiteSpace: "nowrap",
             }}
           >
             {staticSubPrefix}
@@ -267,7 +279,7 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
             <div
               style={{
                 position: "absolute",
-                inset: "-20%",
+                inset: "-25%",
                 background: "radial-gradient(ellipse at center, rgba(0, 240, 255, 0.16) 0%, rgba(56, 189, 248, 0.04) 50%, transparent 75%)",
                 filter: "blur(20px)",
                 pointerEvents: "none",
@@ -278,6 +290,7 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
 
             {/* 1. Sizer Element: Invisible, holds the width of the longest phrase to prevent layout shift */}
             <span
+              aria-hidden="true"
               style={{
                 gridArea: "1 / 1",
                 visibility: "hidden",
@@ -287,7 +300,7 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
                 opacity: 0,
                 height: 0,
                 overflow: "hidden",
-                fontWeight: 900,
+                fontWeight: 800,
               }}
             >
               {longestPhrase}
@@ -308,11 +321,11 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
             >
               <span
                 style={{
-                  background: "linear-gradient(135deg, #00F0FF 0%, #38BDF8 50%, #60A5FA 100%)",
+                  background: "linear-gradient(135deg, #00F0FF 0%, #38BDF8 60%, #60A5FA 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
-                  filter: "drop-shadow(0 0 24px rgba(0, 240, 255, 0.32))",
-                  fontWeight: 900,
+                  filter: "drop-shadow(0 0 16px rgba(0, 240, 255, 0.35))",
+                  fontWeight: 800,
                 }}
               >
                 {displayedText}
@@ -338,7 +351,7 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
               )}
             </span>
           </span>
-        </span>
+        </div>
       </div>
     </div>
   );
