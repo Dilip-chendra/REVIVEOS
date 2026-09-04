@@ -61,7 +61,7 @@ def get_effective_mode(request: Request, current_user: Optional[User] = None) ->
     Returns 'real' or 'demo' based on headers and user state.
     Strictly canonical: 'real' if X-Revive-Mode is REAL or environment is RAZORPAY_TEST/RAZORPAY_LIVE/REAL.
     """
-    x_mode = (request.headers.get("X-Revive-Mode") or "").strip().upper()
+    x_mode = (request.headers.get("X-Revive-Mode") or request.headers.get("X-App-Mode") or "").strip().upper()
     env_header = (request.headers.get("X-Revive-Environment") or "").strip().upper()
     if x_mode == "REAL" or env_header in ("RAZORPAY_TEST", "RAZORPAY_LIVE", "REAL"):
         return "real"
