@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 
 export interface DynamicHeroTextProps {
   staticPrefix?: string;
-  staticSubPrefix?: string;
   phrases?: string[];
   typingSpeed?: number;
   deletingSpeed?: number;
@@ -14,22 +13,20 @@ export interface DynamicHeroTextProps {
 }
 
 const DEFAULT_PHRASES = [
-  "Customer Trust",
-  "Incremental Revenue",
-  "Recovery Capital",
-  "Safe Automation",
-  "Profitability",
-  "Payment Intelligence",
+  "Without Customer Friction.",
+  "Without Margin Erosion.",
+  "Without Agent Collisions.",
+  "Without Blind Retries.",
+  "With Mathematical Safety.",
 ];
 
 export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
-  staticPrefix = "Recover Revenue.",
-  staticSubPrefix = "Preserve ",
+  staticPrefix = "Recover Failed Revenue.",
   phrases = DEFAULT_PHRASES,
-  typingSpeed = 55,
-  deletingSpeed = 30,
-  pauseDuration = 2500,
-  pauseBeforeNext = 380,
+  typingSpeed = 46,
+  deletingSpeed = 24,
+  pauseDuration = 2700,
+  pauseBeforeNext = 360,
   reducedMotion: propReducedMotion,
   className = "",
   style = {},
@@ -147,8 +144,11 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
     isReducedMotion,
   ]);
 
+  // Determine alignment preferences from style
+  const isLeftAligned = style.textAlign === "left" || style.alignItems === "flex-start";
+
   // Accessible full text for screen readers
-  const accessibleText = `${staticPrefix} ${staticSubPrefix}${phrases[0] || ""}`;
+  const accessibleText = `${staticPrefix} ${phrases[0] || ""}`;
 
   return (
     <div
@@ -156,8 +156,8 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
       style={{
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
-        textAlign: "center",
+        alignItems: isLeftAligned ? "flex-start" : "center",
+        textAlign: isLeftAligned ? "left" : "center",
         width: "100%",
         ...style,
       }}
@@ -191,14 +191,20 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
           opacity: 1 !important;
           animation: none !important;
         }
-        @media (max-width: 640px) {
+        .revive-hero-headline {
+          font-size: clamp(2.1rem, 4.4vw, 3.8rem);
+          line-height: 1.2;
+        }
+        @media (max-width: 768px) {
           .revive-hero-headline {
-            font-size: clamp(1.75rem, 6.8vw, 2.5rem) !important;
-            line-height: 1.32 !important;
+            font-size: clamp(1.6rem, 5.8vw, 2.35rem) !important;
+            line-height: 1.25 !important;
           }
-          .revive-hero-line2 {
-            flex-wrap: wrap !important;
-            row-gap: 6px !important;
+        }
+        @media (max-width: 480px) {
+          .revive-hero-headline {
+            font-size: clamp(1.35rem, 5.2vw, 1.7rem) !important;
+            line-height: 1.26 !important;
           }
         }
       `}</style>
@@ -218,139 +224,115 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
         className="revive-hero-headline"
         style={{
           fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-          fontSize: "clamp(2.25rem, 4.8vw, 4.0rem)",
           fontWeight: 800,
-          lineHeight: 1.22,
           letterSpacing: "-0.02em",
-          maxWidth: "1100px",
+          maxWidth: "1150px",
           margin: 0,
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
-          textAlign: "center",
+          alignItems: isLeftAligned ? "flex-start" : "center",
+          textAlign: isLeftAligned ? "left" : "center",
         }}
       >
-        {/* Line 1: Primary Punchline */}
+        {/* Line 1: Primary Capability */}
         <div
           style={{
             color: "#FFFFFF",
             display: "block",
             whiteSpace: "nowrap",
-            marginBottom: "0.15em",
+            marginBottom: "0.14em",
           }}
         >
           {staticPrefix}
         </div>
 
-        {/* Line 2: Prefix + Stable Dynamic Slot */}
+        {/* Line 2: Full-Clause Dynamic Value Statement */}
         <div
           className="revive-hero-line2"
           style={{
-            display: "inline-flex",
+            display: "inline-grid",
+            gridTemplateColumns: "1fr",
             alignItems: "baseline",
-            justifyContent: "center",
-            flexWrap: "nowrap",
+            justifyItems: isLeftAligned ? "start" : "center",
+            textAlign: isLeftAligned ? "left" : "center",
             position: "relative",
+            width: "100%",
+            maxWidth: "100%",
           }}
         >
-          {/* Static Sub-prefix ("Preserve ") */}
-          <span
+          {/* Subtle Ambient Radial Glow */}
+          <div
             style={{
-              color: "#94A3B8",
-              marginRight: "0.32em",
-              fontWeight: 700,
+              position: "absolute",
+              inset: "-30%",
+              background: "radial-gradient(ellipse at center, rgba(0, 240, 255, 0.16) 0%, rgba(56, 189, 248, 0.04) 50%, transparent 75%)",
+              filter: "blur(28px)",
+              pointerEvents: "none",
+              zIndex: 0,
+              animation: "reviveAmbientPulse 4s ease-in-out infinite",
+            }}
+          />
+
+          {/* 1. Sizer Element: Invisible, holds the exact dimensions of the longest phrase to guarantee zero layout shift (CLS = 0.000) */}
+          <div
+            aria-hidden="true"
+            style={{
+              gridArea: "1 / 1",
+              visibility: "hidden",
+              pointerEvents: "none",
+              userSelect: "none",
               whiteSpace: "nowrap",
+              opacity: 0,
+              height: "auto",
+              fontWeight: 800,
+              paddingRight: "10px", // Reserve space for cursor
             }}
           >
-            {staticSubPrefix}
-          </span>
+            {longestPhrase}
+          </div>
 
-          {/* Dynamic Phrase Slot with Zero-CLS Grid Sizer */}
-          <span
+          {/* 2. Active Animated Text with Gradient */}
+          <div
             style={{
-              display: "inline-grid",
-              gridTemplateColumns: "1fr",
-              verticalAlign: "baseline",
-              textAlign: "left",
-              position: "relative",
+              gridArea: "1 / 1",
+              display: "inline-flex",
+              alignItems: "baseline",
+              justifyContent: isLeftAligned ? "flex-start" : "center",
+              whiteSpace: "nowrap",
+              zIndex: 1,
             }}
           >
-            {/* Ambient Cyan Glow behind rotating word */}
-            <div
-              style={{
-                position: "absolute",
-                inset: "-25%",
-                background: "radial-gradient(ellipse at center, rgba(0, 240, 255, 0.16) 0%, rgba(56, 189, 248, 0.04) 50%, transparent 75%)",
-                filter: "blur(20px)",
-                pointerEvents: "none",
-                zIndex: 0,
-                animation: "reviveAmbientPulse 4s ease-in-out infinite",
-              }}
-            />
-
-            {/* 1. Sizer Element: Invisible, holds the width of the longest phrase to prevent layout shift */}
             <span
-              aria-hidden="true"
               style={{
-                gridArea: "1 / 1",
-                visibility: "hidden",
-                pointerEvents: "none",
-                userSelect: "none",
-                whiteSpace: "nowrap",
-                opacity: 0,
-                height: 0,
-                overflow: "hidden",
+                background: "linear-gradient(135deg, #00F0FF 0%, #38BDF8 60%, #60A5FA 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                filter: "drop-shadow(0 0 20px rgba(0, 240, 255, 0.38))",
                 fontWeight: 800,
               }}
             >
-              {longestPhrase}
-              {/* Extra spacing for cursor width to guarantee zero shift */}
-              <span style={{ display: "inline-block", width: "8px" }} />
+              {displayedText}
             </span>
 
-            {/* 2. Active Animated Text with Gradient */}
-            <span
-              style={{
-                gridArea: "1 / 1",
-                display: "inline-flex",
-                alignItems: "baseline",
-                whiteSpace: "nowrap",
-                textAlign: "left",
-                zIndex: 1,
-              }}
-            >
+            {/* Minimal Glowing Accent Cursor */}
+            {!isReducedMotion && (
               <span
+                className={`revive-typewriter-cursor ${!isPaused ? "revive-cursor-typing" : ""}`}
                 style={{
-                  background: "linear-gradient(135deg, #00F0FF 0%, #38BDF8 60%, #60A5FA 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  filter: "drop-shadow(0 0 16px rgba(0, 240, 255, 0.35))",
-                  fontWeight: 800,
+                  display: "inline-block",
+                  width: "3px",
+                  height: "0.85em",
+                  marginLeft: "5px",
+                  borderRadius: "2px",
+                  background: "#00F0FF",
+                  boxShadow: "0 0 10px #00F0FF, 0 0 22px rgba(0, 240, 255, 0.6)",
+                  verticalAlign: "baseline",
+                  transform: "translateY(0.06em)",
+                  flexShrink: 0,
                 }}
-              >
-                {displayedText}
-              </span>
-
-              {/* Minimal Vertical Accent Cursor */}
-              {!isReducedMotion && (
-                <span
-                  className={`revive-typewriter-cursor ${!isPaused ? "revive-cursor-typing" : ""}`}
-                  style={{
-                    display: "inline-block",
-                    width: "2.5px",
-                    height: "0.85em",
-                    marginLeft: "4px",
-                    borderRadius: "1.5px",
-                    background: "#00F0FF",
-                    boxShadow: "0 0 8px #00F0FF, 0 0 16px rgba(0, 240, 255, 0.5)",
-                    verticalAlign: "baseline",
-                    transform: "translateY(0.06em)",
-                    flexShrink: 0,
-                  }}
-                />
-              )}
-            </span>
-          </span>
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>
