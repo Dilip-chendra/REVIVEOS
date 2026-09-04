@@ -491,7 +491,7 @@ curl -X POST ${API_BASE_URL || 'http://localhost:8000'}/api/agents/proposals \\
             style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontSize: "12px", padding: "10px", borderColor: "#EF4444", color: "#FCA5A5" }}
           >
             {runningBypass ? <RefreshCw size={14} className="spin" /> : <Shield size={14} color="#EF4444" />}
-            {runningBypass ? "Simulating Bypass Attack..." : "🛡️ Test Adversarial Bypass Defense"}
+            {runningBypass ? "Simulating Bypass Attack..." : "Test Adversarial Bypass Defense"}
           </button>
 
           {bypassResult && (

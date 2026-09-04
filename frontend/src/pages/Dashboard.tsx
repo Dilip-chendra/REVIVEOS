@@ -2088,7 +2088,7 @@ export default function Dashboard() {
             {/* Invariant Banner */}
             <div style={{ background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.25)", borderRadius: "10px", padding: "14px", marginBottom: "18px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#10B981", fontSize: "12px", fontWeight: 700, marginBottom: "4px" }}>
-                <CheckCircle2 size={15} /> 🛡️ ZERO HISTORICAL RESURRECTION INVARIANT (ENFORCED)
+                <CheckCircle2 size={15} /> ZERO HISTORICAL RESURRECTION INVARIANT (ENFORCED)
               </div>
               <p style={{ margin: 0, fontSize: "12px", color: "#CBD5E1", lineHeight: 1.5 }}>
                 ReviveOS strictly prohibits retrying, debiting, or sending automated recovery outreach for orders older than 72 hours. When a customer initiates a fresh session, a <strong>new intent instance</strong> is established while the 30-day failure remains an immutable historical record.
