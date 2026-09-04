@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { SignIn, SignUp } from "@clerk/clerk-react";
-import { X, Zap, ArrowRight } from "lucide-react";
+import { X, ArrowRight, ShieldCheck } from "lucide-react";
 import { Navbar } from "../components/landing/Navbar";
 import { AgentCollisionSection } from "../components/landing/AgentCollisionSection";
 import { WithWithoutToggle } from "../components/landing/WithWithoutToggle";
@@ -154,10 +154,79 @@ export default function Landing({ onEnterDemo }: LandingProps) {
         {/* ── SECTION 01: HERO SECTION ───────────────────────────── */}
         <section style={{ maxWidth: 1360, margin: "0 auto", padding: "0 28px", width: "100%", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "28px" }}>
           
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 16px", borderRadius: "24px", background: "rgba(0, 240, 255, 0.08)", border: "1px solid rgba(0, 240, 255, 0.35)", backdropFilter: "blur(8px)" }}>
-            <Zap size={13} color="#00F0FF" />
-            <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "#00F0FF", letterSpacing: "0.15em", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
-              FINANCIAL AGENT GOVERNANCE & ECONOMIC ARBITRATION
+          {/* ── EYEBROW: AUTONOMOUS AGENT GOVERNANCE BADGE ───────────────── */}
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "10px",
+              padding: "6px 18px",
+              borderRadius: "9999px",
+              background: "rgba(15, 23, 42, 0.75)",
+              border: "1px solid rgba(56, 189, 248, 0.25)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              boxShadow: "0 0 24px rgba(0, 240, 255, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.12)",
+            }}
+          >
+            {/* Live Pulsing Radar Dot */}
+            <span
+              style={{
+                position: "relative",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "8px",
+                height: "8px",
+              }}
+            >
+              <span
+                className="animate-ping"
+                style={{
+                  position: "absolute",
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "50%",
+                  background: "#00F0FF",
+                  opacity: 0.75,
+                }}
+              />
+              <span
+                style={{
+                  position: "relative",
+                  width: "6px",
+                  height: "6px",
+                  borderRadius: "50%",
+                  background: "#00F0FF",
+                  boxShadow: "0 0 8px #00F0FF",
+                }}
+              />
+            </span>
+
+            <span
+              style={{
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                color: "#E2E8F0",
+                letterSpacing: "0.02em",
+                fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <span>Financial Agent Governance</span>
+              <span style={{ color: "rgba(255, 255, 255, 0.25)" }}>·</span>
+              <span
+                style={{
+                  background: "linear-gradient(135deg, #00F0FF 0%, #38BDF8 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  fontWeight: 700,
+                }}
+              >
+                Economic Arbitration
+              </span>
             </span>
           </div>
 
@@ -167,8 +236,70 @@ export default function Landing({ onEnterDemo }: LandingProps) {
             Enterprises deploy multiple AI agents for cart abandonment, renewals, and dunning. Without a central economic arbiter, they over-contact customers, erode margins with unnecessary discounts, and trigger race conditions. ReviveOS coordinates them all.
           </p>
 
-          <div style={{ padding: "12px 24px", background: "rgba(0, 240, 255, 0.04)", border: "1px solid rgba(0, 240, 255, 0.18)", borderRadius: "10px", fontSize: "0.8125rem", color: "#A5F3FC", maxWidth: "760px", lineHeight: 1.5, backdropFilter: "blur(8px)" }}>
-            <strong>Autonomous Economic Arbiter:</strong> Coordinates multi-agent workflows, enforces 5 mathematical invariants, and guarantees zero customer harassment across every transaction.
+          {/* ── ARCHITECTURE GUARANTEE STRIP ─────────────────────────── */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "16px",
+              padding: "12px 20px",
+              borderRadius: "14px",
+              background: "linear-gradient(135deg, rgba(15, 23, 42, 0.65) 0%, rgba(10, 15, 26, 0.8) 100%)",
+              border: "1px solid rgba(56, 189, 248, 0.2)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              maxWidth: "760px",
+              width: "100%",
+              boxShadow: "0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.06)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", textAlign: "left" }}>
+              <div
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  background: "rgba(0, 240, 255, 0.08)",
+                  border: "1px solid rgba(0, 240, 255, 0.25)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <ShieldCheck size={16} color="#00F0FF" />
+              </div>
+              <div style={{ fontSize: "0.8125rem", lineHeight: 1.45 }}>
+                <strong style={{ color: "#F8FAFC", fontWeight: 700 }}>
+                  Deterministic Economic Arbiter
+                </strong>
+                <span style={{ color: "#64748B", margin: "0 6px" }}>—</span>
+                <span style={{ color: "#94A3B8" }}>
+                  Coordinates multi-agent workflows, enforces 5 mathematical invariants, and guarantees zero customer friction.
+                </span>
+              </div>
+            </div>
+
+            <div
+              className="hidden sm:inline-flex"
+              style={{
+                alignItems: "center",
+                padding: "3px 10px",
+                borderRadius: "9999px",
+                background: "rgba(0, 240, 255, 0.08)",
+                border: "1px solid rgba(0, 240, 255, 0.25)",
+                color: "#00F0FF",
+                fontSize: "10px",
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                fontFamily: "var(--font-mono)",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
+            >
+              100% DETERMINISTIC
+            </div>
           </div>
 
           <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", justifyContent: "center", marginTop: "8px" }}>
