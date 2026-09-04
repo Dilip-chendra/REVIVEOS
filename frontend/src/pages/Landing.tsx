@@ -167,8 +167,8 @@ export default function Landing({ onEnterDemo }: LandingProps) {
             Enterprises deploy multiple AI agents for cart abandonment, renewals, and dunning. Without a central economic arbiter, they over-contact customers, erode margins with unnecessary discounts, and trigger race conditions. ReviveOS coordinates them all.
           </p>
 
-          <div style={{ padding: "12px 24px", background: "rgba(0, 240, 255, 0.04)", border: "1px solid rgba(0, 240, 255, 0.15)", borderRadius: "10px", fontSize: "0.8125rem", color: "#A5F3FC", maxWidth: "720px", lineHeight: 1.5 }}>
-            <strong>Razorpay moves the money. ReviveOS decides whether, when, and how it should move.</strong>
+          <div style={{ padding: "12px 24px", background: "rgba(0, 240, 255, 0.04)", border: "1px solid rgba(0, 240, 255, 0.18)", borderRadius: "10px", fontSize: "0.8125rem", color: "#A5F3FC", maxWidth: "760px", lineHeight: 1.5, backdropFilter: "blur(8px)" }}>
+            <strong>Autonomous Economic Arbiter:</strong> Coordinates multi-agent workflows, enforces 5 mathematical invariants, and guarantees zero customer harassment across every transaction.
           </div>
 
           <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", justifyContent: "center", marginTop: "8px" }}>

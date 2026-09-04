@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 
 export interface DynamicHeroTextProps {
   staticPrefix?: string;
+  staticSubPrefix?: string;
   phrases?: string[];
   typingSpeed?: number;
   deletingSpeed?: number;
@@ -13,20 +14,21 @@ export interface DynamicHeroTextProps {
 }
 
 const DEFAULT_PHRASES = [
-  "Without Customer Friction.",
-  "Without Margin Erosion.",
-  "Without Agent Collisions.",
-  "Without Blind Retries.",
-  "With Mathematical Safety.",
+  "Retry.",
+  "Reroute.",
+  "Pause.",
+  "Escalate.",
+  "Recover.",
 ];
 
 export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
-  staticPrefix = "Recover Failed Revenue.",
+  staticPrefix = "Razorpay Moves the Money.",
+  staticSubPrefix = "ReviveOS Decides When To",
   phrases = DEFAULT_PHRASES,
-  typingSpeed = 46,
-  deletingSpeed = 24,
-  pauseDuration = 2700,
-  pauseBeforeNext = 360,
+  typingSpeed = 52,
+  deletingSpeed = 28,
+  pauseDuration = 2400,
+  pauseBeforeNext = 340,
   reducedMotion: propReducedMotion,
   className = "",
   style = {},
@@ -49,7 +51,7 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
 
   const isReducedMotion = propReducedMotion ?? systemReducedMotion;
 
-  // Find the longest phrase for the invisible sizer to prevent ANY layout shift (CLS = 0)
+  // Find the longest phrase for the invisible sizer to prevent ANY layout shift (CLS = 0.000)
   const longestPhrase = useMemo(() => {
     return phrases.reduce((longest, current) => (current.length > longest.length ? current : longest), "");
   }, [phrases]);
@@ -72,7 +74,6 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
 
     const handleTick = () => {
       if (isPaused) {
-        // Paused state
         if (displayedText.length === currentPhrase.length && !isDeleting) {
           // Finished reading pause -> start deleting
           setIsPaused(false);
@@ -97,8 +98,8 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
             return;
           }
 
-          const jitter = (Math.random() - 0.5) * 10;
-          timeoutRef.current = setTimeout(handleTick, Math.max(15, deletingSpeed + jitter));
+          const jitter = (Math.random() - 0.5) * 8;
+          timeoutRef.current = setTimeout(handleTick, Math.max(16, deletingSpeed + jitter));
         }
       } else {
         // Typing
@@ -112,8 +113,8 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
             return;
           }
 
-          const jitter = (Math.random() - 0.5) * 20;
-          timeoutRef.current = setTimeout(handleTick, Math.max(25, typingSpeed + jitter));
+          const jitter = (Math.random() - 0.5) * 16;
+          timeoutRef.current = setTimeout(handleTick, Math.max(26, typingSpeed + jitter));
         }
       }
     };
@@ -148,7 +149,7 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
   const isLeftAligned = style.textAlign === "left" || style.alignItems === "flex-start";
 
   // Accessible full text for screen readers
-  const accessibleText = `${staticPrefix} ${phrases[0] || ""}`;
+  const accessibleText = `${staticPrefix} ${staticSubPrefix} ${phrases[0] || ""}`;
 
   return (
     <div
@@ -176,12 +177,22 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
         }
         @keyframes reviveAmbientPulse {
           0%, 100% {
-            opacity: 0.3;
+            opacity: 0.35;
             transform: scale(0.98);
           }
           50% {
-            opacity: 0.65;
+            opacity: 0.75;
             transform: scale(1.02);
+          }
+        }
+        @keyframes reviveCapsuleGlow {
+          0%, 100% {
+            border-color: rgba(0, 240, 255, 0.32);
+            box-shadow: inset 0 0 14px rgba(0, 240, 255, 0.1), 0 0 20px rgba(0, 240, 255, 0.15);
+          }
+          50% {
+            border-color: rgba(0, 240, 255, 0.55);
+            box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.18), 0 0 32px rgba(0, 240, 255, 0.3);
           }
         }
         .revive-typewriter-cursor {
@@ -191,20 +202,32 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
           opacity: 1 !important;
           animation: none !important;
         }
+        .revive-action-capsule {
+          animation: reviveCapsuleGlow 4s ease-in-out infinite;
+        }
         .revive-hero-headline {
-          font-size: clamp(2.1rem, 4.4vw, 3.8rem);
-          line-height: 1.2;
+          font-size: clamp(2.05rem, 4.3vw, 3.8rem);
+          line-height: 1.22;
         }
         @media (max-width: 768px) {
           .revive-hero-headline {
-            font-size: clamp(1.6rem, 5.8vw, 2.35rem) !important;
-            line-height: 1.25 !important;
+            font-size: clamp(1.5rem, 5.2vw, 2.25rem) !important;
+            line-height: 1.28 !important;
+          }
+          .revive-action-capsule {
+            padding: 0.04em 0.32em !important;
+            border-radius: 8px !important;
           }
         }
-        @media (max-width: 480px) {
+        @media (max-width: 520px) {
           .revive-hero-headline {
-            font-size: clamp(1.35rem, 5.2vw, 1.7rem) !important;
-            line-height: 1.26 !important;
+            font-size: clamp(1.25rem, 5.0vw, 1.6rem) !important;
+            line-height: 1.34 !important;
+          }
+          .revive-hero-line2 {
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            row-gap: 10px !important;
           }
         }
       `}</style>
@@ -225,8 +248,8 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
         style={{
           fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
           fontWeight: 800,
-          letterSpacing: "-0.02em",
-          maxWidth: "1150px",
+          letterSpacing: "-0.025em",
+          maxWidth: "1200px",
           margin: 0,
           display: "flex",
           flexDirection: "column",
@@ -234,105 +257,149 @@ export const DynamicHeroText: React.FC<DynamicHeroTextProps> = ({
           textAlign: isLeftAligned ? "left" : "center",
         }}
       >
-        {/* Line 1: Primary Capability */}
+        {/* Line 1: Primary Execution Rail */}
         <div
           style={{
             color: "#FFFFFF",
             display: "block",
             whiteSpace: "nowrap",
-            marginBottom: "0.14em",
+            marginBottom: "0.18em",
+            textShadow: "0 2px 24px rgba(255, 255, 255, 0.12)",
           }}
         >
           {staticPrefix}
         </div>
 
-        {/* Line 2: Full-Clause Dynamic Value Statement */}
+        {/* Line 2: Decision OS + Action Capsule */}
         <div
           className="revive-hero-line2"
           style={{
-            display: "inline-grid",
-            gridTemplateColumns: "1fr",
-            alignItems: "baseline",
-            justifyItems: isLeftAligned ? "start" : "center",
-            textAlign: isLeftAligned ? "left" : "center",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: isLeftAligned ? "flex-start" : "center",
+            flexWrap: "nowrap",
+            gap: "0.32em",
             position: "relative",
-            width: "100%",
-            maxWidth: "100%",
+            width: "auto",
           }}
         >
-          {/* Subtle Ambient Radial Glow */}
-          <div
+          {/* Static Sub-prefix ("ReviveOS decides when to") */}
+          <span
             style={{
-              position: "absolute",
-              inset: "-30%",
-              background: "radial-gradient(ellipse at center, rgba(0, 240, 255, 0.16) 0%, rgba(56, 189, 248, 0.04) 50%, transparent 75%)",
-              filter: "blur(28px)",
-              pointerEvents: "none",
-              zIndex: 0,
-              animation: "reviveAmbientPulse 4s ease-in-out infinite",
-            }}
-          />
-
-          {/* 1. Sizer Element: Invisible, holds the exact dimensions of the longest phrase to guarantee zero layout shift (CLS = 0.000) */}
-          <div
-            aria-hidden="true"
-            style={{
-              gridArea: "1 / 1",
-              visibility: "hidden",
-              pointerEvents: "none",
-              userSelect: "none",
+              color: "#94A3B8",
+              fontWeight: 700,
               whiteSpace: "nowrap",
-              opacity: 0,
-              height: "auto",
-              fontWeight: 800,
-              paddingRight: "10px", // Reserve space for cursor
-            }}
-          >
-            {longestPhrase}
-          </div>
-
-          {/* 2. Active Animated Text with Gradient */}
-          <div
-            style={{
-              gridArea: "1 / 1",
               display: "inline-flex",
-              alignItems: "baseline",
-              justifyContent: isLeftAligned ? "flex-start" : "center",
-              whiteSpace: "nowrap",
-              zIndex: 1,
+              alignItems: "center",
+              gap: "0.24em",
             }}
           >
             <span
               style={{
-                background: "linear-gradient(135deg, #00F0FF 0%, #38BDF8 60%, #60A5FA 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                filter: "drop-shadow(0 0 20px rgba(0, 240, 255, 0.38))",
+                color: "#F1F5F9",
                 fontWeight: 800,
+                letterSpacing: "-0.02em",
               }}
             >
-              {displayedText}
+              ReviveOS
+            </span>
+            <span>decides when to</span>
+          </span>
+
+          {/* Dynamic Action Capsule with Zero-CLS Sizer */}
+          <span
+            className="revive-action-capsule"
+            style={{
+              display: "inline-grid",
+              gridTemplateColumns: "1fr",
+              alignItems: "center",
+              justifyItems: "center",
+              position: "relative",
+              verticalAlign: "middle",
+              background: "linear-gradient(135deg, rgba(0, 240, 255, 0.09) 0%, rgba(56, 189, 248, 0.03) 100%)",
+              border: "1px solid rgba(0, 240, 255, 0.35)",
+              borderRadius: "10px",
+              padding: "0.06em 0.44em",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              boxShadow: "inset 0 0 16px rgba(0, 240, 255, 0.12), 0 0 24px rgba(0, 240, 255, 0.18)",
+            }}
+          >
+            {/* Ambient Cyan Glow behind capsule */}
+            <div
+              style={{
+                position: "absolute",
+                inset: "-25%",
+                background: "radial-gradient(ellipse at center, rgba(0, 240, 255, 0.2) 0%, rgba(56, 189, 248, 0.04) 50%, transparent 75%)",
+                filter: "blur(20px)",
+                pointerEvents: "none",
+                zIndex: 0,
+                animation: "reviveAmbientPulse 4s ease-in-out infinite",
+              }}
+            />
+
+            {/* 1. Sizer Element: Invisible, holds the exact dimensions of the longest word ("Escalate.") to guarantee zero layout shift (CLS = 0.000) */}
+            <span
+              aria-hidden="true"
+              style={{
+                gridArea: "1 / 1",
+                visibility: "hidden",
+                pointerEvents: "none",
+                userSelect: "none",
+                whiteSpace: "nowrap",
+                opacity: 0,
+                height: "auto",
+                fontWeight: 800,
+                paddingRight: "8px", // Reserve space for cursor
+              }}
+            >
+              {longestPhrase}
             </span>
 
-            {/* Minimal Glowing Accent Cursor */}
-            {!isReducedMotion && (
+            {/* 2. Active Animated Word with Radiant Cyber Gradient */}
+            <span
+              style={{
+                gridArea: "1 / 1",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                whiteSpace: "nowrap",
+                zIndex: 1,
+              }}
+            >
               <span
-                className={`revive-typewriter-cursor ${!isPaused ? "revive-cursor-typing" : ""}`}
                 style={{
-                  display: "inline-block",
-                  width: "3px",
-                  height: "0.85em",
-                  marginLeft: "5px",
-                  borderRadius: "2px",
-                  background: "#00F0FF",
-                  boxShadow: "0 0 10px #00F0FF, 0 0 22px rgba(0, 240, 255, 0.6)",
-                  verticalAlign: "baseline",
-                  transform: "translateY(0.06em)",
-                  flexShrink: 0,
+                  background: "linear-gradient(135deg, #00F0FF 0%, #38BDF8 55%, #60A5FA 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  filter: "drop-shadow(0 0 18px rgba(0, 240, 255, 0.5))",
+                  fontWeight: 800,
+                  letterSpacing: "-0.01em",
                 }}
-              />
-            )}
-          </div>
+              >
+                {displayedText}
+              </span>
+
+              {/* Minimal Glowing Accent Cursor */}
+              {!isReducedMotion && (
+                <span
+                  className={`revive-typewriter-cursor ${!isPaused ? "revive-cursor-typing" : ""}`}
+                  style={{
+                    display: "inline-block",
+                    width: "3px",
+                    height: "0.82em",
+                    marginLeft: "4px",
+                    borderRadius: "2px",
+                    background: "#00F0FF",
+                    boxShadow: "0 0 10px #00F0FF, 0 0 20px rgba(0, 240, 255, 0.7)",
+                    verticalAlign: "baseline",
+                    transform: "translateY(0.04em)",
+                    flexShrink: 0,
+                  }}
+                />
+              )}
+            </span>
+          </span>
         </div>
       </div>
     </div>
