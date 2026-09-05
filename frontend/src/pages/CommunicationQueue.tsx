@@ -14,10 +14,19 @@ import {
   X,
   Copy,
   ExternalLink,
-  ShieldAlert
+  ShieldAlert,
+  AlertTriangle,
 } from "lucide-react";
-import { api } from "../api/client";
+import { api, createRazorpayPaymentLink } from "../api/client";
 import { useAppMode } from "../context/AppModeContext";
+import LiveRazorpayLinkModal from "../components/LiveRazorpayLinkModal";
+import {
+  FAILURE_REASON_PRESETS,
+  generateWhatsAppRecoveryMessage,
+  generateEmailRecoveryMessage,
+  generateEmailSubject,
+  generateDirectLinkMessage,
+} from "../utils/recoveryMessages";
 
 interface CommRecord {
   id: string;
@@ -63,8 +72,16 @@ const DEFAULT_DEMO_COMMS: CommRecord[] = [
     channel: "WHATSAPP",
     strategy: "CUSTOMER_PROMPT",
     status: "DELIVERED",
-    subject_or_preview: "NovaCart Pro Payment Recovery Link",
-    message_body: "Hi Dilip, your recurring billing of ₹2,500 could not be processed due to card expiry. Tap below to complete your payment seamlessly.",
+    subject_or_preview: "NovaCart Pro Payment Recovery Link [Ref: #OPP-002]",
+    message_body: generateWhatsAppRecoveryMessage({
+      customerName: "Dilip Madagari",
+      merchantName: "NovaCart Pro",
+      amountInr: 2500,
+      caseId: "OPP-002",
+      failureReason: "Bank server connection timeout on HDFC switch during 2FA",
+      failureCode: "GATEWAY_CONNECTION_ERROR",
+      paymentLinkUrl: "https://rzp.io/i/demo_recovery_wa9821",
+    }),
     recipient: "+91 7396404207",
     expected_nic_inr: 2175,
     actual_cost_inr: 0.85,
@@ -74,9 +91,29 @@ const DEFAULT_DEMO_COMMS: CommRecord[] = [
     is_simulated: false,
     contract_hash: "REVIVE-ACT-88210",
     metadata: {
-      whatsapp_url: "https://api.whatsapp.com/send?phone=917396404207&text=Hi%20Dilip%2C%20your%20recurring%20billing%20of%20%E2%82%B92%2C500%20could%20not%20be%20processed%20due%20to%20card%20expiry.%20Tap%20below%20to%20complete%20your%20payment%20seamlessly.",
-      direct_action_url: "https://api.whatsapp.com/send?phone=917396404207&text=Hi%20Dilip%2C%20your%20recurring%20billing%20of%20%E2%82%B92%2C500%20could%20not%20be%20processed%20due%20to%20card%20expiry.%20Tap%20below%20to%20complete%20your%20payment%20seamlessly."
-    }
+      whatsapp_url: `https://api.whatsapp.com/send?phone=917396404207&text=${encodeURIComponent(
+        generateWhatsAppRecoveryMessage({
+          customerName: "Dilip Madagari",
+          merchantName: "NovaCart Pro",
+          amountInr: 2500,
+          caseId: "OPP-002",
+          failureReason: "Bank server connection timeout on HDFC switch during 2FA",
+          failureCode: "GATEWAY_CONNECTION_ERROR",
+          paymentLinkUrl: "https://rzp.io/i/demo_recovery_wa9821",
+        })
+      )}`,
+      direct_action_url: `https://api.whatsapp.com/send?phone=917396404207&text=${encodeURIComponent(
+        generateWhatsAppRecoveryMessage({
+          customerName: "Dilip Madagari",
+          merchantName: "NovaCart Pro",
+          amountInr: 2500,
+          caseId: "OPP-002",
+          failureReason: "Bank server connection timeout on HDFC switch during 2FA",
+          failureCode: "GATEWAY_CONNECTION_ERROR",
+          paymentLinkUrl: "https://rzp.io/i/demo_recovery_wa9821",
+        })
+      )}`,
+    },
   },
   {
     id: "comm_em_4412",
@@ -85,8 +122,16 @@ const DEFAULT_DEMO_COMMS: CommRecord[] = [
     channel: "EMAIL",
     strategy: "INVOICE_COLLECTION",
     status: "DELIVERED",
-    subject_or_preview: "Invoice Settlement Notification #INV-2026-088",
-    message_body: "Hi Dilip, your payment of ₹2,500 is pending. Tap below to complete your payment seamlessly.",
+    subject_or_preview: "Action Required: Complete your NovaCart Pro payment of ₹2,500 [Ref: #INV-2026-088]",
+    message_body: generateEmailRecoveryMessage({
+      customerName: "Dilip Madagari",
+      merchantName: "NovaCart Pro",
+      amountInr: 2500,
+      caseId: "INV-2026-088",
+      failureReason: "Card on file expired; issuer rejected recurring token authorization",
+      failureCode: "CARD_EXPIRED",
+      paymentLinkUrl: "https://rzp.io/i/demo_recovery_em4412",
+    }),
     recipient: "dilip.madagari@gmail.com",
     expected_nic_inr: 2150,
     actual_cost_inr: 0.15,
@@ -95,9 +140,33 @@ const DEFAULT_DEMO_COMMS: CommRecord[] = [
     is_simulated: false,
     contract_hash: "REVIVE-ACT-90412",
     metadata: {
-      webmail_url: "https://mail.google.com/mail/?view=cm&fs=1&to=dilip.madagari@gmail.com&su=Invoice%20Settlement%20Notification%20%23INV-2026-088&body=Hi%20Dilip%2C%20your%20payment%20of%20%E2%82%B92%2C500%20is%20pending.%20Tap%20below%20to%20complete%20your%20payment%20seamlessly.",
-      direct_action_url: "https://mail.google.com/mail/?view=cm&fs=1&to=dilip.madagari@gmail.com&su=Invoice%20Settlement%20Notification%20%23INV-2026-088&body=Hi%20Dilip%2C%20your%20payment%20of%20%E2%82%B92%2C500%20is%20pending.%20Tap%20below%20to%20complete%20your%20payment%20seamlessly."
-    }
+      webmail_url: `https://mail.google.com/mail/?view=cm&fs=1&to=dilip.madagari@gmail.com&su=${encodeURIComponent(
+        "Action Required: Complete your NovaCart Pro payment of ₹2,500 [Ref: #INV-2026-088]"
+      )}&body=${encodeURIComponent(
+        generateEmailRecoveryMessage({
+          customerName: "Dilip Madagari",
+          merchantName: "NovaCart Pro",
+          amountInr: 2500,
+          caseId: "INV-2026-088",
+          failureReason: "Card on file expired; issuer rejected recurring token authorization",
+          failureCode: "CARD_EXPIRED",
+          paymentLinkUrl: "https://rzp.io/i/demo_recovery_em4412",
+        })
+      )}`,
+      direct_action_url: `https://mail.google.com/mail/?view=cm&fs=1&to=dilip.madagari@gmail.com&su=${encodeURIComponent(
+        "Action Required: Complete your NovaCart Pro payment of ₹2,500 [Ref: #INV-2026-088]"
+      )}&body=${encodeURIComponent(
+        generateEmailRecoveryMessage({
+          customerName: "Dilip Madagari",
+          merchantName: "NovaCart Pro",
+          amountInr: 2500,
+          caseId: "INV-2026-088",
+          failureReason: "Card on file expired; issuer rejected recurring token authorization",
+          failureCode: "CARD_EXPIRED",
+          paymentLinkUrl: "https://rzp.io/i/demo_recovery_em4412",
+        })
+      )}`,
+    },
   },
   {
     id: "comm_pl_7731",
@@ -107,7 +176,14 @@ const DEFAULT_DEMO_COMMS: CommRecord[] = [
     strategy: "CUSTOMER_PROMPT",
     status: "PAID",
     subject_or_preview: "Direct Razorpay UPI Payment Short-Link",
-    message_body: "https://rzp.io/rzp/dlT03tTF — Instant recovery rail configured with secondary gateway route.",
+    message_body: generateDirectLinkMessage({
+      customerName: "Nexus Retail Corp",
+      merchantName: "NovaCart Pro",
+      amountInr: 4999,
+      caseId: "OPP-003",
+      failureReason: "Remitter PSP server timed out on NPCI switch",
+      paymentLinkUrl: "https://rzp.io/rzp/dlT03tTF",
+    }),
     recipient: "+91 98201 12345",
     expected_nic_inr: 4120,
     actual_cost_inr: 0.40,
@@ -132,7 +208,7 @@ const DEFAULT_DEMO_COMMS: CommRecord[] = [
     dispatched_at: "2 hours ago",
     is_simulated: false,
     contract_hash: "REVIVE-ACT-44109",
-  }
+  },
 ];
 
 const DEFAULT_TIMELINE: TimelineEvent[] = [
@@ -157,21 +233,66 @@ export default function CommunicationQueue() {
   const [selectedCaseId, setSelectedCaseId] = useState<string>("OPP-002");
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
 
-  // Dispatch modal
+  // Dispatch modal state
   const [showModal, setShowModal] = useState(false);
   const [dispatchChannel, setDispatchChannel] = useState<"EMAIL" | "WHATSAPP" | "PAYMENT_LINK">("WHATSAPP");
   const [targetCaseId, setTargetCaseId] = useState("OPP-002");
   const [customerName, setCustomerName] = useState("Dilip Madagari");
   const [recipient, setRecipient] = useState("+91 7396404207");
-  const [subject, setSubject] = useState(isRealMode ? "Payment Recovery Link" : "NovaCart Pro Payment Recovery");
-  const [body, setBody] = useState("Hi Dilip, your payment of ₹2,500 is pending. Tap below to complete your payment seamlessly.");
+  const [amountInr, setAmountInr] = useState<number>(2500);
+  const [selectedPreset, setSelectedPreset] = useState<string>("bank_timeout");
+  const [failureReason, setFailureReason] = useState<string>("Bank server connection timeout on HDFC switch during 2FA");
+  const [failureCode, setFailureCode] = useState<string>("GATEWAY_CONNECTION_ERROR");
+
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
   const [dispatching, setDispatching] = useState(false);
   const [dispatchResult, setDispatchResult] = useState<any>(null);
 
-  // Inspection Dossier Modal (Dedicated Inspector)
+  // Live Razorpay Sandbox Modal
+  const [showLiveRazorpayModal, setShowLiveRazorpayModal] = useState(false);
+
+  // Inspection Dossier Modal
   const [inspectRecord, setInspectRecord] = useState<CommRecord | null>(null);
   const [showInspectModal, setShowInspectModal] = useState(false);
   const [copiedHash, setCopiedHash] = useState(false);
+
+  // Dynamic message regeneration
+  useEffect(() => {
+    const paymentUrl = isRealMode
+      ? `https://rzp.io/i/plink_${targetCaseId.toLowerCase()}`
+      : `https://rzp.io/rzp/revive_${targetCaseId.toLowerCase()}`;
+
+    const params = {
+      customerName,
+      merchantName: "NovaCart Pro",
+      amountInr,
+      caseId: targetCaseId,
+      failureReason,
+      failureCode,
+      paymentLinkUrl: paymentUrl,
+    };
+
+    if (dispatchChannel === "WHATSAPP") {
+      setSubject(`NovaCart Pro Payment Recovery Link [Ref: #${targetCaseId}]`);
+      setBody(generateWhatsAppRecoveryMessage(params));
+    } else if (dispatchChannel === "EMAIL") {
+      setSubject(generateEmailSubject(params));
+      setBody(generateEmailRecoveryMessage(params));
+    } else {
+      setSubject(`Direct Payment Link [Ref: #${targetCaseId}]`);
+      setBody(generateDirectLinkMessage(params));
+    }
+  }, [dispatchChannel, targetCaseId, customerName, amountInr, failureReason, failureCode, isRealMode]);
+
+  const handlePresetSelect = (presetId: string) => {
+    setSelectedPreset(presetId);
+    const found = FAILURE_REASON_PRESETS.find(p => p.id === presetId);
+    if (found) {
+      setFailureReason(found.diagnosticDetail);
+      setFailureCode(found.code);
+    }
+  };
 
   const fetchComms = async () => {
     try {
@@ -249,6 +370,37 @@ export default function CommunicationQueue() {
       const cleanRecipient = recipient.trim();
       const derivedCustomerId = "CUST-" + (cleanRecipient.replace(/[^a-zA-Z0-9]/g, "") || "DEMO");
 
+      // In Real Mode, generate real Razorpay payment link first
+      let activePaymentUrl = "";
+      if (isRealMode) {
+        try {
+          const plinkRes = await createRazorpayPaymentLink({
+            amount_inr: amountInr,
+            description: `Recovery for ${targetCaseId}: ${failureReason}`,
+            customer_name: customerName,
+            customer_email: dispatchChannel === "EMAIL" ? cleanRecipient : "customer@example.com",
+            customer_contact: dispatchChannel === "WHATSAPP" ? cleanRecipient.replace(/[^\d]/g, "") : undefined,
+            notes: {
+              case_id: targetCaseId,
+              failure_reason: failureReason,
+              failure_code: failureCode,
+              channel: dispatchChannel,
+            },
+          });
+          if (plinkRes?.data?.short_url) {
+            activePaymentUrl = plinkRes.data.short_url;
+          }
+        } catch (linkErr) {
+          console.warn("Live Razorpay link creation note:", linkErr);
+        }
+      }
+
+      // If a real link was generated, embed it into the body text
+      let finalBody = body;
+      if (activePaymentUrl) {
+        finalBody = body.replace(/https:\/\/rzp\.io\/[^\s]+/g, activePaymentUrl);
+      }
+
       // 1. Submit to ReviveOS Backend Orchestrator
       const res = await api.post("/communications/send", {
         case_id: targetCaseId,
@@ -257,7 +409,7 @@ export default function CommunicationQueue() {
         channel: dispatchChannel,
         recipient: cleanRecipient,
         subject_or_preview: subject,
-        message_body: body,
+        message_body: finalBody,
         strategy: "CUSTOMER_PROMPT",
         expected_nic_inr: 2150.0,
       });
@@ -266,9 +418,9 @@ export default function CommunicationQueue() {
       if (data.success) {
         // 2. ACTUALLY TRIGGER EXTERNAL DISPATCH TO SENDER'S REAL CONTACT
         if (dispatchChannel === "WHATSAPP") {
-          sendActualWhatsApp(cleanRecipient, body);
+          sendActualWhatsApp(cleanRecipient, finalBody);
         } else if (dispatchChannel === "EMAIL") {
-          sendActualEmail(cleanRecipient, subject, body);
+          sendActualEmail(cleanRecipient, subject, finalBody);
         }
 
         setDispatchResult({
@@ -287,7 +439,7 @@ export default function CommunicationQueue() {
           strategy: "CUSTOMER_PROMPT",
           status: "DELIVERED",
           subject_or_preview: subject,
-          message_body: body,
+          message_body: finalBody,
           recipient: cleanRecipient,
           expected_nic_inr: 2150,
           actual_cost_inr: dispatchChannel === "WHATSAPP" ? 0.85 : 0.80,
@@ -358,6 +510,20 @@ export default function CommunicationQueue() {
 
   return (
     <div style={{ maxWidth: 1380, margin: "0 auto", display: "flex", flexDirection: "column", gap: 28, paddingBottom: 80 }}>
+      
+      {/* Live Razorpay Modal Component */}
+      <LiveRazorpayLinkModal
+        isOpen={showLiveRazorpayModal}
+        onClose={() => setShowLiveRazorpayModal(false)}
+        defaultAmount={amountInr}
+        customerName={customerName}
+        customerEmail={recipient.includes("@") ? recipient : "dilip.madagari@gmail.com"}
+        customerPhone={recipient.includes("@") ? "+91 7396404207" : recipient}
+        caseId={targetCaseId}
+        failureReason={failureReason}
+        failureCode={failureCode}
+      />
+
       {/* ── Page Header ── */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
         <div>
@@ -381,18 +547,31 @@ export default function CommunicationQueue() {
             </span>
           </h1>
           <p style={{ fontSize: "0.875rem", color: "#94A3B8", marginTop: 4, maxWidth: 720, lineHeight: 1.5 }}>
-            Send real recovery communications directly via WhatsApp and Email to customer contacts. Every dispatch is cryptographically signed and tracked with delivery receipts.
+            Send real recovery communications directly via WhatsApp and Email to customer contacts with explicit diagnostic root causes and verified Razorpay payment links.
           </p>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <button
+            onClick={() => setShowLiveRazorpayModal(true)}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "9px 18px", borderRadius: 10,
+              background: "linear-gradient(135deg, rgba(0, 240, 255, 0.15) 0%, rgba(0, 119, 255, 0.15) 100%)",
+              border: "1px solid #00F0FF",
+              color: "#00F0FF", fontSize: "0.8125rem", fontWeight: 800,
+              cursor: "pointer", transition: "all 0.15s ease",
+            }}
+          >
+            <Zap size={15} />
+            Live Razorpay Sandbox
+          </button>
+
+          <button
             onClick={() => {
               setDispatchChannel("EMAIL");
               setRecipient("dilip.madagari@gmail.com");
               setCustomerName("Dilip Madagari");
-              setSubject(isRealMode ? "Invoice Settlement" : "NovaCart Pro Invoice Settlement");
-              setBody("Hi Dilip, your payment of ₹2,500 is pending. Tap below to complete your payment seamlessly.");
               setDispatchResult(null);
               setShowModal(true);
             }}
@@ -414,8 +593,6 @@ export default function CommunicationQueue() {
               setDispatchChannel("WHATSAPP");
               setRecipient("+91 7396404207");
               setCustomerName("Dilip Madagari");
-              setSubject(isRealMode ? "Payment Recovery" : "NovaCart Pro Payment Recovery");
-              setBody("Hi Dilip, your payment of ₹2,500 is pending. Tap below to complete your payment seamlessly.");
               setDispatchResult(null);
               setShowModal(true);
             }}
@@ -603,156 +780,157 @@ export default function CommunicationQueue() {
                 </tr>
               ) : (
                 filteredComms.map((c) => {
-                const isWa = c.channel === "WHATSAPP";
-                const isEm = c.channel === "EMAIL";
-                const isPaid = c.status === "PAID";
-                const isRead = c.status === "READ";
-                const isDelivered = c.status === "DELIVERED";
-                const isBlocked = c.status === "BLOCKED";
+                  const isWa = c.channel === "WHATSAPP";
+                  const isEm = c.channel === "EMAIL";
+                  const isPaid = c.status === "PAID";
+                  const isRead = c.status === "READ";
+                  const isDelivered = c.status === "DELIVERED";
+                  const isBlocked = c.status === "BLOCKED";
 
-                return (
-                  <tr
-                    key={c.id}
-                    style={{
-                      borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
-                      background: selectedCaseId === c.case_id ? "rgba(59, 130, 246, 0.06)" : "transparent",
-                      transition: "all 0.15s ease",
-                      cursor: "pointer"
-                    }}
-                    onClick={() => openInspector(c)}
-                  >
-                    {/* Channel & Recipient */}
-                    <td style={{ padding: "16px 20px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{
-                          width: 32, height: 32, borderRadius: 8,
-                          background: isWa ? "rgba(16, 185, 129, 0.15)" : isEm ? "rgba(59, 130, 246, 0.15)" : "rgba(6, 182, 212, 0.15)",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          color: isWa ? "#34D399" : isEm ? "#60A5FA" : "#22D3EE",
-                          flexShrink: 0
-                        }}>
-                          {isWa ? <MessageSquare size={16} /> : isEm ? <Mail size={16} /> : <Zap size={16} />}
+                  return (
+                    <tr
+                      key={c.id}
+                      style={{
+                        borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+                        background: selectedCaseId === c.case_id ? "rgba(59, 130, 246, 0.06)" : "transparent",
+                        transition: "all 0.15s ease",
+                        cursor: "pointer"
+                      }}
+                      onClick={() => openInspector(c)}
+                    >
+                      {/* Channel & Recipient */}
+                      <td style={{ padding: "16px 20px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{
+                            width: 32, height: 32, borderRadius: 8,
+                            background: isWa ? "rgba(16, 185, 129, 0.15)" : isEm ? "rgba(59, 130, 246, 0.15)" : "rgba(6, 182, 212, 0.15)",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            color: isWa ? "#34D399" : isEm ? "#60A5FA" : "#22D3EE",
+                            flexShrink: 0
+                          }}>
+                            {isWa ? <MessageSquare size={16} /> : isEm ? <Mail size={16} /> : <Zap size={16} />}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 700, color: "#F8FAFC" }}>{c.channel}</div>
+                            <div style={{ fontSize: "0.75rem", color: "#94A3B8" }}>{c.recipient}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div style={{ fontWeight: 700, color: "#F8FAFC" }}>{c.channel}</div>
-                          <div style={{ fontSize: "0.75rem", color: "#94A3B8" }}>{c.recipient}</div>
+                      </td>
+
+                      {/* Customer & Case */}
+                      <td style={{ padding: "16px 20px" }}>
+                        <div style={{ fontWeight: 700, color: "#F1F5F9" }}>{c.customer_name}</div>
+                        <div style={{ fontSize: "0.75rem", color: "#38BDF8", fontWeight: 600 }}>{c.case_id}</div>
+                      </td>
+
+                      {/* Strategy & Message Preview */}
+                      <td style={{ padding: "16px 20px", maxWidth: 380 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                          <span style={{
+                            fontSize: "0.65rem", fontWeight: 700, padding: "2px 6px", borderRadius: 4,
+                            background: "rgba(255, 255, 255, 0.08)", color: "#CBD5E1"
+                          }}>
+                            {c.strategy}
+                          </span>
+                          <span style={{ fontSize: "0.7rem", color: "#64748B" }}>{c.dispatched_at}</span>
                         </div>
-                      </div>
-                    </td>
+                        <div style={{ fontSize: "0.8rem", color: "#94A3B8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {c.subject_or_preview}
+                        </div>
+                      </td>
 
-                    {/* Customer & Case */}
-                    <td style={{ padding: "16px 20px" }}>
-                      <div style={{ fontWeight: 700, color: "#F1F5F9" }}>{c.customer_name}</div>
-                      <div style={{ fontSize: "0.75rem", color: "#38BDF8", fontWeight: 600 }}>{c.case_id}</div>
-                    </td>
+                      {/* Expected Yield */}
+                      <td style={{ padding: "16px 20px" }}>
+                        <div style={{ fontWeight: 700, color: isBlocked ? "#64748B" : "#34D399" }}>
+                          {isBlocked ? "₹0 (Blocked)" : `₹${c.expected_nic_inr.toLocaleString("en-IN")}`}
+                        </div>
+                        <div style={{ fontSize: "0.75rem", color: "#64748B" }}>
+                          Cost: ₹{c.actual_cost_inr.toFixed(2)}
+                        </div>
+                      </td>
 
-                    {/* Strategy & Message Preview */}
-                    <td style={{ padding: "16px 20px", maxWidth: 380 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                      {/* Delivery Status */}
+                      <td style={{ padding: "16px 20px" }}>
                         <span style={{
-                          fontSize: "0.65rem", fontWeight: 700, padding: "2px 6px", borderRadius: 4,
-                          background: "rgba(255, 255, 255, 0.08)", color: "#CBD5E1"
+                          display: "inline-block",
+                          padding: "4px 10px", borderRadius: "9999px",
+                          fontSize: "0.72rem", fontWeight: 700,
+                          background: isPaid ? "rgba(16, 185, 129, 0.15)" : isRead ? "rgba(6, 182, 212, 0.15)" : isDelivered ? "rgba(59, 130, 246, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                          border: `1px solid ${isPaid ? "rgba(16, 185, 129, 0.3)" : isRead ? "rgba(6, 182, 212, 0.3)" : isDelivered ? "rgba(59, 130, 246, 0.3)" : "rgba(239, 68, 68, 0.3)"}`,
+                          color: isPaid ? "#34D399" : isRead ? "#22D3EE" : isDelivered ? "#60A5FA" : "#F87171"
                         }}>
-                          {c.strategy}
+                          {c.status}
                         </span>
-                        <span style={{ fontSize: "0.7rem", color: "#64748B" }}>{c.dispatched_at}</span>
-                      </div>
-                      <div style={{ fontSize: "0.8rem", color: "#94A3B8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {c.subject_or_preview}
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Expected Yield */}
-                    <td style={{ padding: "16px 20px" }}>
-                      <div style={{ fontWeight: 700, color: isBlocked ? "#64748B" : "#34D399" }}>
-                        {isBlocked ? "₹0 (Blocked)" : `₹${c.expected_nic_inr.toLocaleString("en-IN")}`}
-                      </div>
-                      <div style={{ fontSize: "0.75rem", color: "#64748B" }}>
-                        Cost: ₹{c.actual_cost_inr.toFixed(2)}
-                      </div>
-                    </td>
+                      {/* Actions: Send Real + Inspect */}
+                      <td style={{ padding: "16px 20px", textAlign: "right" }}>
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                          {isWa && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                sendActualWhatsApp(c.recipient, c.message_body);
+                              }}
+                              title="Open WhatsApp chat with this customer directly"
+                              style={{
+                                padding: "6px 12px", borderRadius: 8,
+                                background: "rgba(16, 185, 129, 0.15)",
+                                border: "1px solid rgba(16, 185, 129, 0.35)",
+                                color: "#34D399",
+                                fontSize: "0.75rem", fontWeight: 700, cursor: "pointer",
+                                display: "inline-flex", alignItems: "center", gap: 5,
+                              }}
+                            >
+                              <ExternalLink size={12} />
+                              WhatsApp
+                            </button>
+                          )}
 
-                    {/* Delivery Status */}
-                    <td style={{ padding: "16px 20px" }}>
-                      <span style={{
-                        display: "inline-block",
-                        padding: "4px 10px", borderRadius: "9999px",
-                        fontSize: "0.72rem", fontWeight: 700,
-                        background: isPaid ? "rgba(16, 185, 129, 0.15)" : isRead ? "rgba(6, 182, 212, 0.15)" : isDelivered ? "rgba(59, 130, 246, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                        border: `1px solid ${isPaid ? "rgba(16, 185, 129, 0.3)" : isRead ? "rgba(6, 182, 212, 0.3)" : isDelivered ? "rgba(59, 130, 246, 0.3)" : "rgba(239, 68, 68, 0.3)"}`,
-                        color: isPaid ? "#34D399" : isRead ? "#22D3EE" : isDelivered ? "#60A5FA" : "#F87171"
-                      }}>
-                        {c.status}
-                      </span>
-                    </td>
+                          {isEm && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                sendActualEmail(c.recipient, c.subject_or_preview, c.message_body);
+                              }}
+                              title="Open Gmail composer directly with this customer"
+                              style={{
+                                padding: "6px 12px", borderRadius: 8,
+                                background: "rgba(59, 130, 246, 0.15)",
+                                border: "1px solid rgba(59, 130, 246, 0.35)",
+                                color: "#60A5FA",
+                                fontSize: "0.75rem", fontWeight: 700, cursor: "pointer",
+                                display: "inline-flex", alignItems: "center", gap: 5,
+                              }}
+                            >
+                              <ExternalLink size={12} />
+                              Gmail
+                            </button>
+                          )}
 
-                    {/* Actions: Send Real + Inspect */}
-                    <td style={{ padding: "16px 20px", textAlign: "right" }}>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                        {isWa && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              sendActualWhatsApp(c.recipient, c.message_body);
+                              openInspector(c);
                             }}
-                            title="Open WhatsApp chat with this customer directly"
                             style={{
-                              padding: "6px 12px", borderRadius: 8,
-                              background: "rgba(16, 185, 129, 0.15)",
-                              border: "1px solid rgba(16, 185, 129, 0.35)",
-                              color: "#34D399",
-                              fontSize: "0.75rem", fontWeight: 700, cursor: "pointer",
-                              display: "inline-flex", alignItems: "center", gap: 5,
+                              padding: "6px 14px", borderRadius: 8,
+                              background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
+                              border: "1px solid rgba(56, 189, 248, 0.3)",
+                              color: "#38BDF8",
+                              fontSize: "0.75rem", fontWeight: 800, cursor: "pointer",
+                              display: "inline-flex", alignItems: "center", gap: 6,
                             }}
                           >
-                            <ExternalLink size={12} />
-                            WhatsApp
+                            Inspect
+                            <ChevronRight size={13} />
                           </button>
-                        )}
-
-                        {isEm && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              sendActualEmail(c.recipient, c.subject_or_preview, c.message_body);
-                            }}
-                            title="Open Gmail composer directly with this customer"
-                            style={{
-                              padding: "6px 12px", borderRadius: 8,
-                              background: "rgba(59, 130, 246, 0.15)",
-                              border: "1px solid rgba(59, 130, 246, 0.35)",
-                              color: "#60A5FA",
-                              fontSize: "0.75rem", fontWeight: 700, cursor: "pointer",
-                              display: "inline-flex", alignItems: "center", gap: 5,
-                            }}
-                          >
-                            <ExternalLink size={12} />
-                            Gmail
-                          </button>
-                        )}
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openInspector(c);
-                          }}
-                          style={{
-                            padding: "6px 14px", borderRadius: 8,
-                            background: "linear-gradient(135deg, #1E293B 0%, #0F172A 100%)",
-                            border: "1px solid rgba(56, 189, 248, 0.3)",
-                            color: "#38BDF8",
-                            fontSize: "0.75rem", fontWeight: 800, cursor: "pointer",
-                            display: "inline-flex", alignItems: "center", gap: 6,
-                          }}
-                        >
-                          Inspect
-                          <ChevronRight size={13} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              }))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -938,7 +1116,8 @@ export default function CommunicationQueue() {
                   <div style={{
                     background: inspectRecord.channel === "WHATSAPP" ? "rgba(6, 78, 59, 0.25)" : "rgba(30, 58, 138, 0.25)",
                     border: `1px solid ${inspectRecord.channel === "WHATSAPP" ? "rgba(16, 185, 129, 0.3)" : "rgba(59, 130, 246, 0.3)"}`,
-                    borderRadius: 12, padding: 16, color: "#F1F5F9", fontSize: "0.875rem", lineHeight: 1.5
+                    borderRadius: 12, padding: 16, color: "#F1F5F9", fontSize: "0.8125rem", lineHeight: 1.5,
+                    fontFamily: "var(--font-mono)", whiteSpace: "pre-wrap"
                   }}>
                     <div style={{ fontSize: "0.75rem", fontWeight: 800, color: inspectRecord.channel === "WHATSAPP" ? "#34D399" : "#60A5FA", marginBottom: 6 }}>
                       To: {inspectRecord.recipient}
@@ -1025,34 +1204,34 @@ export default function CommunicationQueue() {
       {/* ── Dispatch Outreach Modal ── */}
       <AnimatePresence>
         {showModal && (
-          <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.8)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               style={{
                 background: "#0D131F", border: "1px solid rgba(255, 255, 255, 0.15)",
-                borderRadius: 20, maxWidth: 560, width: "100%", padding: 28,
-                boxShadow: "0 25px 50px -12px rgba(0,0,0,0.8)", display: "flex", flexDirection: "column", gap: 20
+                borderRadius: 24, maxWidth: 680, width: "100%", maxHeight: "92vh", overflowY: "auto", padding: 28,
+                boxShadow: "0 25px 50px -12px rgba(0,0,0,0.9)", display: "flex", flexDirection: "column", gap: 18
               }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: dispatchChannel === "WHATSAPP" ? "rgba(16, 185, 129, 0.15)" : "rgba(59, 130, 246, 0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {dispatchChannel === "WHATSAPP" ? <MessageSquare size={18} color="#34D399" /> : <Mail size={18} color="#60A5FA" />}
+                  <div style={{ width: 40, height: 40, borderRadius: 12, background: dispatchChannel === "WHATSAPP" ? "rgba(16, 185, 129, 0.15)" : "rgba(59, 130, 246, 0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {dispatchChannel === "WHATSAPP" ? <MessageSquare size={20} color="#34D399" /> : <Mail size={20} color="#60A5FA" />}
                   </div>
                   <div>
-                    <h3 style={{ fontSize: "1.125rem", fontWeight: 800, color: "#F8FAFC", margin: 0 }}>
-                      Send Recovery Outreach
+                    <h3 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#F8FAFC", margin: 0 }}>
+                      Send Diagnostic Recovery Outreach
                     </h3>
                     <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: 0 }}>
-                      Directly delivers message to recipient via {dispatchChannel === "WHATSAPP" ? "WhatsApp" : "Gmail"}
+                      Generates rich failure analysis and dispatches via {dispatchChannel === "WHATSAPP" ? "WhatsApp" : "Gmail"}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowModal(false)}
-                  style={{ background: "none", border: "none", color: "#64748B", cursor: "pointer" }}
+                  style={{ background: "none", border: "none", color: "#64748B", cursor: "pointer", padding: 4 }}
                 >
                   <X size={20} />
                 </button>
@@ -1061,7 +1240,7 @@ export default function CommunicationQueue() {
               {/* Channel Selector */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
                 {[
-                  { id: "WHATSAPP", label: "WhatsApp", icon: MessageSquare, color: "#10B981" },
+                  { id: "WHATSAPP", label: "WhatsApp Business", icon: MessageSquare, color: "#10B981" },
                   { id: "EMAIL", label: "Smart Email", icon: Mail, color: "#3B82F6" },
                   { id: "PAYMENT_LINK", label: "Direct Link", icon: Zap, color: "#06B6D4" },
                 ].map((item) => {
@@ -1093,48 +1272,110 @@ export default function CommunicationQueue() {
 
               {/* Form Fields */}
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                   <div>
-                    <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#94A3B8", display: "block", marginBottom: 4 }}>Target Case ID</label>
+                    <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "#94A3B8", display: "block", marginBottom: 4 }}>Target Case ID</label>
                     <input
                       type="text"
                       value={targetCaseId}
                       onChange={(e) => setTargetCaseId(e.target.value)}
-                      style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "#FFF", fontSize: "0.8125rem" }}
+                      style={{ width: "100%", padding: "8px 12px", borderRadius: 8, background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "#00F0FF", fontSize: "0.8125rem", fontFamily: "var(--font-mono)" }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#94A3B8", display: "block", marginBottom: 4 }}>Customer Name</label>
+                    <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "#94A3B8", display: "block", marginBottom: 4 }}>Customer Name</label>
                     <input
                       type="text"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "#FFF", fontSize: "0.8125rem" }}
+                      style={{ width: "100%", padding: "8px 12px", borderRadius: 8, background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "#FFF", fontSize: "0.8125rem" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "#94A3B8", display: "block", marginBottom: 4 }}>Amount (INR)</label>
+                    <input
+                      type="number"
+                      value={amountInr}
+                      onChange={(e) => setAmountInr(Number(e.target.value))}
+                      style={{ width: "100%", padding: "8px 12px", borderRadius: 8, background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "#00FF66", fontSize: "0.8125rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#94A3B8", display: "block", marginBottom: 4 }}>
-                    Recipient ({dispatchChannel === "EMAIL" ? "Email Address" : "Phone Number"})
+                  <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "#94A3B8", display: "block", marginBottom: 4 }}>
+                    Recipient ({dispatchChannel === "EMAIL" ? "Email Address" : "Phone Number (WhatsApp)"})
                   </label>
                   <input
                     type="text"
                     value={recipient}
                     onChange={(e) => setRecipient(e.target.value)}
                     placeholder={dispatchChannel === "EMAIL" ? "e.g. dilip.madagari@gmail.com" : "e.g. +91 7396404207"}
-                    style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "#FFF", fontSize: "0.8125rem" }}
+                    style={{ width: "100%", padding: "8px 12px", borderRadius: 8, background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "#FFF", fontSize: "0.8125rem" }}
                   />
                 </div>
 
+                {/* Diagnostic Failure Reason Selector */}
                 <div>
-                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#94A3B8", display: "block", marginBottom: 4 }}>Message Content</label>
+                  <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "#94A3B8", display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                    <AlertTriangle size={12} color="#F59E0B" />
+                    Failure Diagnostic Reason
+                  </label>
+                  <select
+                    value={selectedPreset}
+                    onChange={(e) => handlePresetSelect(e.target.value)}
+                    style={{
+                      width: "100%", padding: "8px 12px", borderRadius: 8,
+                      background: "rgba(15, 23, 42, 0.9)", border: "1px solid rgba(255, 255, 255, 0.15)",
+                      color: "#FFF", fontSize: "0.8125rem"
+                    }}
+                  >
+                    {FAILURE_REASON_PRESETS.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label} ({p.code})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={failureReason}
+                    onChange={(e) => setFailureReason(e.target.value)}
+                    placeholder="Custom failure diagnostic explanation..."
+                    style={{ width: "100%", marginTop: 6, padding: "8px 12px", borderRadius: 8, background: "rgba(10, 15, 26, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "#CBD5E1", fontSize: "0.75rem" }}
+                  />
+                </div>
+
+                {dispatchChannel === "EMAIL" && (
+                  <div>
+                    <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "#94A3B8", display: "block", marginBottom: 4 }}>Email Subject Line</label>
+                    <input
+                      type="text"
+                      value={subject}
+                      onChange={(e) => setSubject(e.target.value)}
+                      style={{ width: "100%", padding: "8px 12px", borderRadius: 8, background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "#FFF", fontSize: "0.8125rem" }}
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <label style={{ fontSize: "0.7rem", fontWeight: 700, color: "#94A3B8" }}>
+                      Generated Rich Message Body
+                    </label>
+                    <span style={{ fontSize: "0.6875rem", color: "#34D399" }}>Auto-formatted with failure diagnostics & payment rails</span>
+                  </div>
                   <textarea
-                    rows={3}
+                    rows={8}
                     value={body}
                     onChange={(e) => setBody(e.target.value)}
-                    style={{ width: "100%", padding: "10px 14px", borderRadius: 8, background: "rgba(15, 23, 42, 0.8)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "#FFF", fontSize: "0.8125rem", resize: "none" }}
+                    style={{
+                      width: "100%", padding: "12px 14px", borderRadius: 8,
+                      background: dispatchChannel === "WHATSAPP" ? "#061A14" : "#080D1A",
+                      border: `1px solid ${dispatchChannel === "WHATSAPP" ? "rgba(16, 185, 129, 0.3)" : "rgba(59, 130, 246, 0.3)"}`,
+                      color: "#FFF", fontSize: "0.75rem", fontFamily: "var(--font-mono)", lineHeight: 1.5, resize: "none"
+                    }}
                   />
                 </div>
               </div>
@@ -1203,7 +1444,7 @@ export default function CommunicationQueue() {
                     cursor: "pointer", boxShadow: "0 0 16px rgba(16, 185, 129, 0.3)"
                   }}
                 >
-                  {dispatching ? "Sending..." : `Send via ${dispatchChannel === "WHATSAPP" ? "WhatsApp" : "Gmail"}`}
+                  {dispatching ? "Creating Link & Dispatching..." : `Send via ${dispatchChannel === "WHATSAPP" ? "WhatsApp" : "Gmail"}`}
                 </button>
               </div>
             </motion.div>

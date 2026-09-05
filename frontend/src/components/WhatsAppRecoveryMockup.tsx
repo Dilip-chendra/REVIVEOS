@@ -21,7 +21,7 @@ export default function WhatsAppRecoveryMockup({
   customerName = "Rahul Sharma",
   merchantName = "CloudCRM Pro",
   amountInr = 150000,
-  failureReason = "Weekend card velocity limit",
+  failureReason = "Bank server connection timeout during 2FA",
   scenarioType = "card_expired",
   onPaymentSuccess
 }: WhatsAppMockupProps) {
@@ -45,7 +45,7 @@ export default function WhatsAppRecoveryMockup({
   const isCardExpired = scenarioType === "card_expired" || failureReason.toLowerCase().includes("expired");
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px", maxWidth: "420px", margin: "0 auto", width: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px", maxWidth: "440px", margin: "0 auto", width: "100%" }}>
       {/* Channel Selector */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--bg-overlay)", padding: "4px", borderRadius: "10px", border: "1px solid var(--border)" }}>
         <button
@@ -125,7 +125,7 @@ export default function WhatsAppRecoveryMockup({
           style={{
             background: channel === "whatsapp" ? "#0b141a" : "#09090b",
             padding: "16px 10px",
-            minHeight: "340px",
+            minHeight: "380px",
             display: "flex",
             flexDirection: "column",
             gap: "12px",
@@ -145,7 +145,7 @@ export default function WhatsAppRecoveryMockup({
               color: "#e9edef",
               borderRadius: "12px",
               padding: "12px 14px",
-              maxWidth: "92%",
+              maxWidth: "96%",
               boxShadow: "0 1px 2px rgba(0,0,0,0.3)",
               border: "1px solid rgba(255,255,255,0.05)",
               display: "flex",
@@ -158,12 +158,17 @@ export default function WhatsAppRecoveryMockup({
             </div>
 
             <p style={{ margin: 0, lineHeight: 1.45, color: "#d1d7db", fontSize: "0.75rem" }}>
-              Hi <strong>{customerName}</strong>, your recent renewal of <strong>{fmt(amountInr)}</strong> could not be processed due to: <em>{failureReason}</em>.
+              Hi <strong>{customerName}</strong>, your recent payment of <strong>{fmt(amountInr)}</strong> could not be processed automatically.
             </p>
 
-            <div style={{ background: "rgba(0,0,0,0.3)", padding: "8px 10px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.06)", fontSize: "0.6875rem" }}>
-              <div style={{ color: "var(--text-tertiary)" }}>Involuntary Churn Protection:</div>
-              <div style={{ color: "#25D366", fontWeight: 600 }}>Your subscription & data remain 100% active.</div>
+            <div style={{ background: "rgba(0,0,0,0.35)", padding: "8px 10px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.06)", fontSize: "0.6875rem" }}>
+              <div style={{ color: "#FBBF24", fontWeight: 700, marginBottom: "2px" }}>🔍 Reason of Payment Failure:</div>
+              <div style={{ color: "#E2E8F0", fontStyle: "italic" }}>{failureReason}</div>
+            </div>
+
+            <div style={{ background: "rgba(16, 185, 129, 0.08)", padding: "8px 10px", borderRadius: "8px", border: "1px solid rgba(16, 185, 129, 0.2)", fontSize: "0.6875rem" }}>
+              <div style={{ color: "var(--text-tertiary)" }}>🛡️ Involuntary Churn Protection:</div>
+              <div style={{ color: "#25D366", fontWeight: 600 }}>No duplicate charge occurred. Your account remains active in a 48h grace window.</div>
             </div>
 
             {/* Interactive Recovery Buttons */}

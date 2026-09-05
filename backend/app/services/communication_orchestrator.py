@@ -99,8 +99,24 @@ class CommunicationOrchestrator:
                 channel="WHATSAPP",
                 strategy="CUSTOMER_PROMPT",
                 status="DELIVERED",
-                subject_or_preview="Payment Recovery Link for NovaCart Pro",
-                message_body="Hi Dilip, your recurring billing of ₹2,500 could not be processed due to card expiry. Tap below to update your payment method seamlessly.",
+                subject_or_preview="NovaCart Pro Payment Recovery Link [Ref: #OPP-002]",
+                message_body=(
+                    "👋 *Hi Dilip Madagari,*\n\n"
+                    "We noticed your recent payment of *₹2,500* for *NovaCart Pro* could not be processed automatically.\n\n"
+                    "🔍 *Diagnostic Reason for Payment Failure:*\n"
+                    "↳ *Bank server connection timeout on HDFC switch during 2FA* (Error Code: `GATEWAY_CONNECTION_ERROR` • Ref: `OPP-002`)\n\n"
+                    "🛡️ *Customer Protection & Grace Period:*\n"
+                    "• *No duplicate charge* occurred on your bank account or card.\n"
+                    "• Your account, services, and cart remain *100% active and protected* during our 48-hour grace window.\n\n"
+                    "⚡ *1-Tap Instant Payment Recovery Link:*\n"
+                    "👉 https://rzp.io/i/demo_recovery_wa9821\n\n"
+                    "💳 *Supported Payment Methods on Link:*\n"
+                    "• UPI Intent (Google Pay, PhonePe, Paytm, BHIM)\n"
+                    "• All Major Credit & Debit Cards (Visa, Mastercard, RuPay)\n"
+                    "• 50+ NetBanking Banks & Cardless EMI\n\n"
+                    "🔒 _100% RBI-Compliant & SSL 256-Bit Encrypted by Razorpay Gateway._\n"
+                    "If you have already completed this payment or need assistance, simply reply directly to this message."
+                ),
                 recipient="+91 7396404207",
                 idempotency_key="OPP-002:WHATSAPP:INITIAL",
                 expected_nic_inr=2175.0,
@@ -121,8 +137,33 @@ class CommunicationOrchestrator:
                 channel="EMAIL",
                 strategy="INVOICE_COLLECTION",
                 status="SENT",
-                subject_or_preview="Invoice Settlement Notification #INV-2026-088",
-                message_body="Hi Dilip, your payment of ₹2,500 is pending. Tap below to complete your payment seamlessly.",
+                subject_or_preview="Action Required: Complete your NovaCart Pro payment of ₹2,500 [Ref: #INV-2026-088]",
+                message_body=(
+                    "Dear Dilip Madagari,\n\n"
+                    "We are writing to inform you regarding a recent billing attempt for your account with NovaCart Pro. Your scheduled payment of ₹2,500 was declined by the banking network and could not be completed.\n\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    "TRANSACTION DIAGNOSTIC DETAILS\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    "• Reference / Case ID : INV-2026-088\n"
+                    "• Amount Due          : ₹2,500\n"
+                    "• Merchant            : NovaCart Pro\n"
+                    "• Failure Category    : Payment Authorization Declined\n"
+                    "• Reason of Failure   : Card on file expired; issuer rejected recurring token authorization\n"
+                    "• Technical Code      : CARD_EXPIRED\n"
+                    "• Account Status      : Active (48-Hour Involuntary Churn Protection Active)\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    "WHY DID THIS HAPPEN?\n"
+                    "Our payment monitoring telemetry indicates that your transaction was interrupted due to: Card on file expired; issuer rejected recurring token authorization. Please be assured that no duplicate amount was debited from your bank account.\n\n"
+                    "HOW TO COMPLETE YOUR PAYMENT:\n"
+                    "To ensure uninterrupted service access and prevent subscription lapse, please use our secure single-use payment link below to complete payment with any preferred method (UPI, Debit/Credit Card, or NetBanking):\n\n"
+                    "👉 COMPLETE PAYMENT NOW: https://rzp.io/i/demo_recovery_em4412\n\n"
+                    "SECURITY & COMPLIANCE GUARANTEE:\n"
+                    "This payment link is generated over encrypted rails via Razorpay and governed under ReviveOS Financial Safety Protocol v1. All transactions are RBI compliant, tokenized, and protected by end-to-end 256-bit SSL encryption.\n\n"
+                    "If you have already settled this balance or believe this notification reached you in error, you may safely disregard this message. For any questions, reply to this email or contact support.\n\n"
+                    "Warm regards,\n"
+                    "Billing & Customer Operations Team\n"
+                    "NovaCart Pro in partnership with ReviveOS Recovery Gateway"
+                ),
                 recipient="dilip.madagari@gmail.com",
                 idempotency_key="OPP-001:EMAIL:INV",
                 expected_nic_inr=2150.0,
@@ -141,8 +182,16 @@ class CommunicationOrchestrator:
                 channel="PAYMENT_LINK",
                 strategy="CUSTOMER_PROMPT",
                 status="PAID",
-                subject_or_preview="NovaCart Quick Checkout Link",
-                message_body="Hi Nexus team, complete your invoice settlement via 1-tap UPI.",
+                subject_or_preview="Direct Razorpay UPI Payment Short-Link [Ref: #OPP-003]",
+                message_body=(
+                    "🔗 Direct Razorpay Recovery Link for Nexus Retail Corp\n\n"
+                    "• Merchant      : NovaCart Pro\n"
+                    "• Case Ref      : OPP-003\n"
+                    "• Amount        : ₹4,999\n"
+                    "• Failure Cause : Remitter PSP server timed out on NPCI switch\n"
+                    "• Recovery URL  : https://rzp.io/rzp/dlT03tTF\n\n"
+                    "Single-use, RBI-compliant payment link powered by Razorpay. Valid for 48 hours."
+                ),
                 recipient="+91 98201 12345",
                 idempotency_key="OPP-003:LINK:01",
                 expected_nic_inr=3950.0,
