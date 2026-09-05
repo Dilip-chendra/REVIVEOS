@@ -1,4 +1,4 @@
-﻿"""ReviveAI 2.0 — Chaos & Red Team Security Lab Router"""
+"""ReviveAI 2.0 — Chaos & Red Team Security Lab Router"""
 import hashlib
 import hmac
 import time
@@ -192,7 +192,7 @@ async def execute_drill(
             "conclusion": "PASSED: Exact ₹50,000 mathematical ceiling enforced. ₹50,001 routed to human review.",
         }
     elif drill_id == "ai_outage_fallback":
-        dummy_score = RiskScore("c_test", 0.85, 0.90, 45000.0, RecoveryStrategy.retry, FailureCategory.temporary_failure, 0.9, "Fallback test", [])
+        dummy_score = RiskScore("c_test", 0.85, 0.90, 45000.0, RecoveryStrategy.RETRY, FailureCategory.TEMPORARY_FAILURE, 0.9, "Fallback test", [])
         fallback = ai_agent._fallback_diagnosis({"id": "c_test", "amount_inr": 50000}, dummy_score)
         result = {
             "drill_id": drill_id,
