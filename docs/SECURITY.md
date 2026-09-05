@@ -5,7 +5,8 @@
 | Version | Supported |
 | :--- | :---: |
 | ReviveOS v1.0.x | :white_check_mark: Supported |
-| ReviveOS Beta | :x: Not Supported |
+| ReviveOS Beta | :white_check_mark: Supported |
+| ReviveOS Main / Production | :white_check_mark: Supported |
 
 ---
 
@@ -13,7 +14,7 @@
 
 If you discover a security vulnerability within ReviveOS, please do not open a public issue.
 
-Please notify the security team at **security@reviveos.ai** or submit a private security advisory via GitHub's vulnerability reporting tool.
+Please notify the security team at **dilip.madagari@gmail.com** or submit a private security advisory via GitHub's vulnerability reporting tool.
 
 - **Response SLA**: All security reports are acknowledged within **24 hours**.
 - **Coordinated Disclosure**: We operate under Coordinated Vulnerability Disclosure principles and ask that you give us time to patch the issue before publicizing it.
