@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/Backend-FastAPI%20%7C%20Python%203.11-38BDF8?style=flat-square&logo=fastapi)](backend/)
 [![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%7C%20Vite%20%7C%20TypeScript-6366F1?style=flat-square&logo=react)](frontend/)
 [![Razorpay](https://img.shields.io/badge/Razorpay-Test%20Mode%20%26%20Webhooks%20Connected-00F0FF?style=flat-square&logo=razorpay)](backend/app/services/razorpay_service.py)
-[![AI Core](https://img.shields.io/badge/AI%20Core-Gemini%202.0%20Flash-F59E0B?style=flat-square&logo=google)](backend/app/services/ai_agent.py)
+[![AI Core](https://img.shields.io/badge/AI%20Core-Gemini%202.0%20Flash%20%7C%20OpenRouter-F59E0B?style=flat-square&logo=google)](backend/app/services/ai_agent.py)
 [![Evaluation](https://img.shields.io/badge/Evaluation-100K%20Benchmark%20%7C%2087.7%25%20F1-10B981?style=flat-square&logo=scikitlearn)](backend/evaluation/)
 [![Security](https://img.shields.io/badge/Security-SHA--256%20Audit%20Receipts-10B981?style=flat-square&logo=shield)](backend/app/services/audit_service.py)
 
@@ -25,10 +25,10 @@ While payment gateways like **Razorpay, PayU, and Cashfree** provide the financi
 ```
                                   REVIVEOS DECISION PIPELINE
                                   
-   Raw Ingestion             Tier 1: AI Reasoning         Tier 2: Policy Gate          Tier 3: Execution
+   Raw Ingestion             Tier 1: Multi-Model AI        Tier 2: Policy Gate          Tier 3: Execution
   ┌──────────────┐          ┌──────────────────────┐     ┌───────────────────────┐    ┌────────────────────┐
-  │   Webhook    │          │  Google Gemini 2.0   │     │  Deterministic Policy │    │ Bounded Execution  │
-  │ (Razorpay /  │ ───────► │  Flash Reasoning     │ ──► │  Firewall (Python)    │ ─► │ • Smart Route      │
+  │   Webhook    │          │  Gemini 2.0 Flash /  │     │  Deterministic Policy │    │ Bounded Execution  │
+  │ (Razorpay /  │ ───────► │  OpenRouter Gateway  │ ──► │  Firewall (Python)    │ ─► │ • Smart Route      │
   │ PayU / UPI)  │          │  • Root Cause Detect │     │  • Hard ₹50,000 Cap   │    │ • 1-Tap WhatsApp   │
   └──────────────┘          │  • P(Recovery) Calc  │     │  • Cooldown Check     │    │ • Human Escalation │
                             └──────────────────────┘     │  • 3-Retry Max Ceiling│    └────────────────────┘
@@ -40,7 +40,7 @@ While payment gateways like **Razorpay, PayU, and Cashfree** provide the financi
 ```
 
 ReviveOS combines:
-1. **AI Cognitive Intelligence (Google Gemini 2.0 Flash)**: Diagnoses the root cause behind every payment failure.
+1. **Multi-Model AI Cognitive Intelligence (Google Gemini 2.0 Flash & OpenRouter Gateway)**: Diagnoses root causes with dynamic fallback across Gemini and OpenRouter models with rolling health checks and circuit breakers.
 2. **Deterministic Python Policy Firewall**: Zero-trust hard limits (₹50,000 auto-cap, 3-retry max ceiling, mandatory cooldowns) preventing AI hallucinations.
 3. **Multi-Strategy Bounded Execution**: Dynamic sub-1.8s route switching, 1-tap WhatsApp payment links (`plink_...`), and UPI AutoPay mandate updates.
 4. **Append-Only SHA-256 Audit Trail**: Institutional-grade regulatory compliance for RBI and enterprise auditors.
